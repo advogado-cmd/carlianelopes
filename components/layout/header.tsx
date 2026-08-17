@@ -28,6 +28,7 @@ export function Header({ locale = "pt", alternates }: HeaderProps) {
 
   const items = [
     { href: pagePath("especialidades", locale), label: c.nav.specialties },
+    { href: pagePath("curriculo", locale), label: c.nav.curriculum },
     { href: pagePath("terapia-sem-fronteiras", locale), label: c.nav.abroad },
     { href: pagePath("avaliacao-psicologica", locale), label: c.nav.assessment },
     { href: pagePath("blog", locale), label: c.nav.blog },

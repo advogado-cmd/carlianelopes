@@ -20,6 +20,7 @@ export function Footer({ locale = "pt" }: { locale?: Locale }) {
 
   const links = [
     { href: pagePath("especialidades", locale), label: c.nav.specialties },
+    { href: pagePath("curriculo", locale), label: c.nav.curriculum },
     { href: pagePath("terapia-sem-fronteiras", locale), label: c.nav.abroad },
     { href: pagePath("avaliacao-psicologica", locale), label: c.nav.assessment },
     { href: pagePath("blog", locale), label: c.nav.blog },
@@ -31,7 +32,7 @@ export function Footer({ locale = "pt" }: { locale?: Locale }) {
       <div className="container mx-auto px-4 py-14">
         <div className="grid gap-10 md:grid-cols-3">
           <div>
-            <Wordmark variant="light" />
+            <Wordmark variant="light" descriptor={locale === "pt" ? "Psicologia clínica" : locale === "en" ? "Clinical psychology" : "Psicología clínica"} />
             {/* Identificação profissional — obrigatória, sem abreviar o nome */}
             <p className="mt-5 text-sm text-cream/70">
               {c.compliance.identity}

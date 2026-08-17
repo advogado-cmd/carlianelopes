@@ -3,6 +3,7 @@ import { HomeView } from "@/components/views/home-view"
 import { ContactSection } from "@/components/views/contact-section"
 import { EspecialidadesHubView } from "@/components/views/especialidades-hub-view"
 import { EspecialidadeView } from "@/components/views/especialidade-view"
+import { CurriculoView } from "@/components/views/curriculo-view"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { WhatsAppFloat } from "@/components/layout/whatsapp-float"
@@ -41,6 +42,14 @@ export function renderLocalePage(locale: Locale, target: Resolved) {
         <HomeView locale={locale} />
         <ContactSection locale={locale} />
         <JsonLd data={[psychologistSchema(locale)]} />
+      </Shell>
+    )
+  }
+
+  if (target.type === "curriculo") {
+    return (
+      <Shell locale={locale} alternates={PAGES.curriculo} origem="curriculo">
+        <CurriculoView locale={locale} />
       </Shell>
     )
   }

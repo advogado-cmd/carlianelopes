@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { chrome } from "@/lib/i18n/chrome"
@@ -24,7 +25,8 @@ export function HomeView({ locale }: { locale: Locale }) {
     <>
       {/* HERO */}
       <section className="bg-cream">
-        <div className="container mx-auto px-4 py-20 sm:py-28">
+        <div className="container mx-auto grid items-center gap-12 px-4 py-16 sm:py-24 md:grid-cols-[1.15fr_1fr]">
+          <div>
           <span className="eyebrow">{c.home.heroEyebrow}</span>
           <span className="rule-gold my-4" />
           <h1 className="max-w-[17ch] text-[clamp(2rem,5.2vw,3.25rem)]">{c.home.heroTitle}</h1>
@@ -52,6 +54,23 @@ export function HomeView({ locale }: { locale: Locale }) {
             <span className="h-1.5 w-1.5 rounded-full bg-gold-light" aria-hidden />
             {c.compliance.identity} · {c.compliance.crp}
           </p>
+          </div>
+
+          <Image
+            src="/images/carliane-principal.png"
+            alt={
+              locale === "pt"
+                ? "Carliane Lopes de Oliveira, psicóloga clínica"
+                : locale === "en"
+                  ? "Carliane Lopes de Oliveira, clinical psychologist"
+                  : "Carliane Lopes de Oliveira, psicóloga clínica"
+            }
+            width={620}
+            height={840}
+            priority
+            sizes="(max-width: 768px) 100vw, 40vw"
+            className="mx-auto w-full max-w-[340px] rounded-[--radius] object-cover md:max-w-none"
+          />
         </div>
       </section>
 
@@ -110,9 +129,34 @@ export function HomeView({ locale }: { locale: Locale }) {
       {/* QUEM CONDUZ + as três provas de profundidade */}
       <section className="bg-cream-2">
         <div className="container mx-auto px-4 py-16 sm:py-20">
-          <span className="eyebrow">{c.home.whoEyebrow}</span>
-          <h2 className="mt-3 text-[clamp(1.6rem,3.4vw,2.05rem)]">{c.home.whoTitle}</h2>
-          <p className="mt-4 max-w-[62ch] text-[16.5px] leading-relaxed text-foreground">{c.home.whoText}</p>
+          <div className="grid items-start gap-10 md:grid-cols-[260px_1fr]">
+            <Image
+              src="/images/screenshot-202025-12-01-20at-2010.png"
+              alt={
+                locale === "pt"
+                  ? "Retrato de Carliane Lopes de Oliveira"
+                  : locale === "en"
+                    ? "Portrait of Carliane Lopes de Oliveira"
+                    : "Retrato de Carliane Lopes de Oliveira"
+              }
+              width={300}
+              height={336}
+              sizes="(max-width: 768px) 60vw, 300px"
+              className="w-full max-w-[220px] rounded-[--radius] object-cover md:max-w-none"
+            />
+            <div>
+              <span className="eyebrow">{c.home.whoEyebrow}</span>
+              <h2 className="mt-3 text-[clamp(1.6rem,3.4vw,2.05rem)]">{c.home.whoTitle}</h2>
+              <p className="mt-4 max-w-[62ch] text-[16.5px] leading-relaxed text-foreground">{c.home.whoText}</p>
+              <Link
+                href={pagePath("curriculo", locale) ?? "/"}
+                className="mt-5 inline-flex items-center gap-2 text-[14.5px] font-semibold text-wing-deep"
+              >
+                {c.nav.curriculum}
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </div>
+          </div>
 
           {/* Substitui o contador de "pacientes atendidos" (decisão de 17/ago/2026) */}
           <dl className="mt-10 grid border-y border-line sm:grid-cols-3">

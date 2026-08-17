@@ -22,6 +22,7 @@ import {
 export type PageKey =
   | "home"
   | "especialidades"
+  | "curriculo"
   | "terapia-sem-fronteiras"
   | "avaliacao-psicologica"
   | "blog"
@@ -33,6 +34,11 @@ export const PAGES: Record<PageKey, MaybeLocalized<string>> = {
     pt: "/especialidades",
     en: "/en/specialties",
     es: "/es/especialidades",
+  },
+  curriculo: {
+    pt: "/curriculo",
+    en: "/en/credentials",
+    es: "/es/formacion",
   },
   // Páginas ainda em português apenas — migram na fase 2 (§ 6.7 do plano).
   "terapia-sem-fronteiras": { pt: "/terapia-sem-fronteiras", en: null, es: null },
@@ -74,6 +80,7 @@ export type Resolved =
   | { type: "home" }
   | { type: "especialidades" }
   | { type: "especialidade"; key: string }
+  | { type: "curriculo" }
 
 /**
  * Traduz (locale, segmentos) na página correspondente.
@@ -81,6 +88,11 @@ export type Resolved =
  */
 export function resolveLocalePath(locale: Locale, segments: string[] = []): Resolved | null {
   if (segments.length === 0) return { type: "home" }
+
+  const curriculoSeg = PAGES.curriculo[locale]?.split("/").pop()
+  if (segments.length === 1 && curriculoSeg && segments[0] === curriculoSeg) {
+    return { type: "curriculo" }
+  }
 
   const base = ESPECIALIDADES_BASE[locale].split("/").pop()! // specialties | especialidades
 

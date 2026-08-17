@@ -9,10 +9,12 @@ import { chrome } from "@/lib/i18n/chrome"
 export const dynamicParams = false
 
 export function generateStaticParams() {
-  return PREFIXED_LOCALES.flatMap((locale) => {
-    const path = pagePath("especialidades", locale)
-    return path ? [{ locale, section: path.split("/").pop()! }] : []
-  })
+  return PREFIXED_LOCALES.flatMap((locale) =>
+    (["especialidades", "curriculo"] as const).flatMap((key) => {
+      const path = pagePath(key, locale)
+      return path ? [{ locale, section: path.split("/").pop()! }] : []
+    }),
+  )
 }
 
 async function resolve(params: Promise<{ locale: string; section: string }>) {
@@ -20,7 +22,8 @@ async function resolve(params: Promise<{ locale: string; section: string }>) {
   if (!isLocale(raw) || raw === "pt") return null
   const locale = raw as Locale
   const target = resolveLocalePath(locale, [section])
-  return target && target.type === "especialidades" ? { locale, target } : null
+  if (!target) return null
+  return target.type === "especialidades" || target.type === "curriculo" ? { locale, target } : null
 }
 
 export async function generateMetadata({
@@ -31,6 +34,13 @@ export async function generateMetadata({
   const resolved = await resolve(params)
   if (!resolved) return {}
   const c = chrome(resolved.locale)
+  if (resolved.target.type === "curriculo") {
+    return {
+      title: { absolute: c.seo.curriculoTitle },
+      description: c.seo.curriculoDescription,
+      alternates: alternatesMetadata(PAGES.curriculo, resolved.locale),
+    }
+  }
   return {
     title: { absolute: c.seo.hubTitle },
     description: c.specialties.hubSub,

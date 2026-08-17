@@ -38,7 +38,7 @@ export interface Chrome {
     backToSpecialties: string
   }
   /** Títulos de SEO: <=60 caracteres, sem repetir o nome (o template do layout já o acrescenta). */
-  seo: { homeTitle: string; hubTitle: string }
+  seo: { homeTitle: string; hubTitle: string; curriculoTitle: string; curriculoDescription: string }
   home: {
     heroEyebrow: string
     heroTitle: string
@@ -114,7 +114,7 @@ const ADDRESS =
 
 export const CHROME: Localized<Chrome> = {
   pt: {
-    seo: { homeTitle: "Psicóloga em Recife e online — CRP 02/12727", hubTitle: "Especialidades — psicóloga online e em Recife" },
+    seo: { homeTitle: "Psicóloga em Recife e online — CRP 02/12727", hubTitle: "Especialidades — psicóloga online e em Recife", curriculoTitle: "Currículo — formação, publicações e experiência", curriculoDescription: "Formação em Psicologia, especializações, formação internacional, publicações e experiência clínica e hospitalar de Carliane Lopes de Oliveira, CRP 02/12727." },
     nav: {
       home: "Início",
       about: "Sobre",
@@ -237,7 +237,7 @@ export const CHROME: Localized<Chrome> = {
   },
 
   en: {
-    seo: { homeTitle: "Brazilian psychologist — online therapy worldwide", hubTitle: "Specialties — Brazilian psychologist online" },
+    seo: { homeTitle: "Brazilian psychologist — online therapy worldwide", hubTitle: "Specialties — Brazilian psychologist online", curriculoTitle: "Credentials — training, publications, experience", curriculoDescription: "Training in Psychology, postgraduate studies, international training, publications and clinical and hospital experience of Carliane Lopes de Oliveira, CRP 02/12727." },
     nav: {
       home: "Home",
       about: "About",
@@ -359,7 +359,7 @@ export const CHROME: Localized<Chrome> = {
   },
 
   es: {
-    seo: { homeTitle: "Psicóloga brasileña — terapia en línea", hubTitle: "Especialidades — psicóloga en línea" },
+    seo: { homeTitle: "Psicóloga brasileña — terapia en línea", hubTitle: "Especialidades — psicóloga en línea", curriculoTitle: "Formación — estudios, publicaciones y experiencia", curriculoDescription: "Formación en Psicología, posgrados, formación internacional, publicaciones y experiencia clínica y hospitalaria de Carliane Lopes de Oliveira, CRP 02/12727." },
     nav: {
       home: "Inicio",
       about: "Sobre mí",
