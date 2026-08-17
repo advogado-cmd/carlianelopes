@@ -1,60 +1,60 @@
 import type { MetadataRoute } from "next"
+import { LOCALES, absoluteUrl } from "@/lib/i18n/locales"
+import { allPathsFor, PAGES, especialidadePath } from "@/lib/i18n/routes"
+import { ESPECIALIDADES } from "@/lib/especialidades/registry"
+import { BLOG_POSTS } from "@/lib/blog/registry"
 
+/**
+ * Sitemap.
+ *
+ * Gerado dos registries — nunca de uma lista escrita à mão. O sitemap antigo
+ * listava oito slugs de blog que não existiam no código: eram 404 anunciados
+ * ao Google. Aqui, se a URL não vem do registry, ela não entra.
+ *
+ * Cada entrada carrega `alternates.languages` com as versões publicadas —
+ * o equivalente do hreflang dentro do sitemap.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://carlianelopes.com.br"
+  const now = new Date()
+  const entries: MetadataRoute.Sitemap = []
 
-  // Páginas estáticas
-  const staticPages = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/terapia-sem-fronteiras`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/avaliacao-psicologica`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/privacidade`,
-      lastModified: new Date(),
-      changeFrequency: "yearly" as const,
-      priority: 0.3,
-    },
-  ]
+  for (const locale of LOCALES) {
+    for (const path of allPathsFor(locale)) {
+      const isHome = path === PAGES.home[locale]
+      const key = ESPECIALIDADES.find((e) => especialidadePath(e.key, locale) === path)
 
-  // Artigos do blog
-  const blogSlugs = [
-    "constelacao-familiar-cura-padroes",
-    "saude-mental-trabalho",
-    "terapia-casal-comunicacao",
-    "ansiedade-depressao-sinais-tratamento",
-    "gestao-crises-traumas",
-    "autismo-tea-aba",
-    "constelacao-sistemica",
-    "saude-mental-corporativa",
-  ]
+      const languages: Record<string, string> = {}
+      for (const l of LOCALES) {
+        const alt = key ? especialidadePath(key.key, l) : sameStaticPath(path, locale, l)
+        if (alt) languages[l === "pt" ? "pt-BR" : l] = absoluteUrl(alt)
+      }
 
-  const blogPages = blogSlugs.map((slug) => ({
-    url: `${baseUrl}/blog/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: "monthly" as const,
-    priority: 0.7,
-  }))
+      entries.push({
+        url: absoluteUrl(path),
+        lastModified: now,
+        changeFrequency: isHome ? "weekly" : "monthly",
+        priority: isHome ? 1 : key ? 0.8 : 0.6,
+        alternates: { languages },
+      })
+    }
+  }
 
-  return [...staticPages, ...blogPages]
+  for (const post of BLOG_POSTS) {
+    entries.push({
+      url: absoluteUrl(`/blog/${post.slug}`),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    })
+  }
+
+  return entries
+}
+
+/** Para páginas estáticas: o mesmo key noutro idioma. */
+function sameStaticPath(path: string, from: (typeof LOCALES)[number], to: (typeof LOCALES)[number]) {
+  for (const key of Object.keys(PAGES) as (keyof typeof PAGES)[]) {
+    if (PAGES[key][from] === path) return PAGES[key][to]
+  }
+  return null
 }

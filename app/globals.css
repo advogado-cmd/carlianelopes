@@ -1,83 +1,82 @@
-/* Custom theme for psychologist landing page with blue tones */
+/* Design System v1.0 — cromia derivada da logomarca (17/ago/2026).
+   Substitui a paleta do v0 (#91A8D0 pastel + #CD8D7A terracota). */
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
-  --background: #e8f0f8;
-  --foreground: #2d3436;
-  --card: #f4f8fc;
-  --card-foreground: #2d3436;
-  --popover: #f4f8fc;
-  --popover-foreground: #2d3436;
-  --primary: #91a8d0;
-  --primary-foreground: #ffffff;
-  --secondary: #cd8d7a;
-  --secondary-foreground: #ffffff;
-  --muted: #d6e4f0;
-  --muted-foreground: #4a5568;
-  --accent: #d6e4f0;
-  --accent-foreground: #2d3436;
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: #91a8d0;
-  --input: #91a8d0;
-  --ring: #91a8d0;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.75rem;
-  --sidebar: #f4f8fc;
-  --sidebar-foreground: #2d3436;
-  --sidebar-primary: #91a8d0;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #d6e4f0;
-  --sidebar-accent-foreground: #2d3436;
-  --sidebar-border: #91a8d0;
-  --sidebar-ring: #91a8d0;
-}
+  /* superfícies */
+  --background: #FBFAF7;          /* creme — o branco da logo, não branco puro */
+  --card: #FFFFFF;
+  --surface-alt: #F5F2EA;
+  --surface-info: #E4EAF5;        /* névoa azul — único fundo frio (bloco de segurança) */
+  --popover: #FFFFFF;
+  --popover-foreground: #333A45;
+  --card-foreground: #333A45;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* tinta */
+  --foreground: #333A45;
+  --heading: #22345F;
+  --muted-foreground: #6B7280;
+
+  /* marca */
+  --navy: #22345F;
+  --navy-soft: #2A3A5E;
+  --navy-deep: #1A2848;
+  --gold: #B8924A;                /* material: filete, contorno, capitular */
+  --gold-light: #D4B36A;
+  --gold-ink: #7A6028;            /* dourado quando precisa ser texto corrido (AA) */
+  --eyebrow: #9A7A34;
+  --wing: #5474B4;                /* ilustração e ícones */
+  --wing-deep: #3E5A8F;           /* links e foco — versão acessível do azul-asa */
+  --mist: #E4EAF5;
+  --whatsapp: #1F7A4D;            /* não usar #25D366: falha contraste com texto branco */
+
+  /* shadcn */
+  --primary: #22345F;
+  --primary-foreground: #FBFAF7;
+  --secondary: #B8924A;
+  --secondary-foreground: #22345F;
+  --muted: #F5F2EA;
+  --accent: #E4EAF5;
+  --accent-foreground: #22345F;
+  --destructive: #8C3126;
+  --destructive-foreground: #FFFFFF;
+  --border: #E6E1D6;              /* borda quente, nunca cinza neutro */
+  --input: #E6E1D6;
+  --ring: #3E5A8F;
+  --radius: 0.875rem;
+
+  --sidebar: #FBFAF7;
+  --sidebar-foreground: #333A45;
+  --sidebar-primary: #22345F;
+  --sidebar-primary-foreground: #FBFAF7;
+  --sidebar-accent: #F5F2EA;
+  --sidebar-accent-foreground: #22345F;
+  --sidebar-border: #E6E1D6;
+  --sidebar-ring: #3E5A8F;
+
+  --chart-1: #22345F; --chart-2: #5474B4; --chart-3: #B8924A;
+  --chart-4: #9A7A34; --chart-5: #3E5A8F;
 }
 
 @theme inline {
-  --font-sans: "Lato", "Lato Fallback", system-ui, sans-serif;
-  --font-serif: "Lora", "Lora Fallback", Georgia, serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --color-navy: var(--navy);
+  --color-navy-soft: var(--navy-soft);
+  --color-navy-deep: var(--navy-deep);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-ink: var(--gold-ink);
+  --color-eyebrow: var(--eyebrow);
+  --color-wing: var(--wing);
+  --color-wing-deep: var(--wing-deep);
+  --color-mist: var(--mist);
+  --color-cream: var(--background);
+  --color-cream-2: var(--surface-alt);
+  --color-line: var(--border);
+  --color-heading: var(--heading);
+  --color-whatsapp: var(--whatsapp);
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -119,17 +118,43 @@
 
 @layer base {
   * {
-    @apply border-border/20 outline-ring/50;
+    @apply border-border outline-ring/60;
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 17px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
   }
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-serif;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-heading;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.22;
+  }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  ::selection { background: var(--mist); color: var(--navy); }
+}
+
+@layer components {
+  /* eyebrow: única aplicação do dourado como texto sobre creme — >=16px, semibold */
+  .eyebrow {
+    @apply font-sans text-eyebrow font-semibold uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+  }
+  .rule-gold { @apply block h-px w-13 bg-gold-light; width: 52px; height: 1.5px; }
+  .prose-editorial p { @apply font-serif; font-size: 1.1875rem; line-height: 1.78; max-width: 64ch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

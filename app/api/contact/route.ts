@@ -1,7 +1,16 @@
 import { Resend } from "resend"
 import { NextResponse } from "next/server"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+/**
+ * O client do Resend era instanciado no escopo do módulo. Sem a variável
+ * RESEND_API_KEY, isso derruba o BUILD INTEIRO na etapa de coleta de dados
+ * das páginas — não só a rota. Instanciar dentro do handler faz a falta da
+ * chave virar um erro de requisição, que é o que ela é.
+ */
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY
+  return key ? new Resend(key) : null
+}
 
 function isValidEmail(value: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -43,6 +52,12 @@ export async function POST(request: Request) {
     // Only add replyTo if it's a valid email address
     if (isValidEmail(contact)) {
       emailOptions.replyTo = contact
+    }
+
+    const resend = getResend()
+    if (!resend) {
+      console.error("[contato] RESEND_API_KEY ausente no ambiente")
+      return NextResponse.json({ error: "Serviço de e-mail indisponível" }, { status: 503 })
     }
 
     const { data, error } = await resend.emails.send(emailOptions)

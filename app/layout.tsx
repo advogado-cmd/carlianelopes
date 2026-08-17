@@ -1,85 +1,66 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Lora, Lato } from "next/font/google"
+import { Newsreader, Figtree } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
 import "./globals.css"
 import { LanguageProvider } from "@/lib/i18n"
+import { SITE_URL } from "@/lib/i18n/locales"
 
-const lora = Lora({
+/**
+ * Newsreader nos títulos e no corpo dos textos longos — é onde mora a
+ * autoridade quieta. Figtree na interface, ecoando a sans geométrica
+ * humanista da assinatura. Ver Design System v1.0, § 4.
+ */
+const newsreader = Newsreader({
   subsets: ["latin"],
-  variable: "--font-serif",
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
   display: "swap",
 })
 
-const lato = Lato({
+const figtree = Figtree({
   subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  variable: "--font-sans",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-figtree",
   display: "swap",
 })
 
 export const metadata: Metadata = {
-  title: "Carliane Lopes de Oliveira | Psicóloga em Recife - CRP 02/12727",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Carliane Lopes de Oliveira — Psicóloga em Recife e online | CRP 02/12727",
+    template: "%s | Carliane Lopes de Oliveira",
+  },
   description:
-    "Psicóloga clínica com mais de 20 anos de experiência. Atendimento para ansiedade, depressão, terapia de casal, TEA e constelação familiar. Online e presencial em Recife/PE.",
-  keywords: [
-    "psicóloga recife",
-    "terapia boa viagem",
-    "psicóloga pina",
-    "terapia online",
-    "tcc recife",
-    "constelação familiar",
-    "psicóloga TEA",
-  ],
+    "Psicóloga clínica com mais de 20 anos de atuação. Ansiedade, depressão, terapia de casal, luto, crise e trauma. Online para o Brasil e o exterior, presencial em Boa Viagem, Recife.",
   authors: [{ name: "Carliane Lopes de Oliveira" }],
-  generator: "v0.app",
+  creator: "Carliane Lopes de Oliveira",
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     shortcut: "/favicon.svg",
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "Carliane Lopes de Oliveira | Psicóloga em Recife",
-    description: "Cuide da sua saúde mental com acolhimento, técnica e segurança. Atendimento online e presencial.",
-    url: "https://www.carlianelopes.com.br",
-    siteName: "Carliane Lopes de Oliveira - Psicóloga",
-    images: [
-      {
-        url: "/images/carliane2-nf4qo.jpeg",
-        width: 1200,
-        height: 630,
-        alt: "Dra. Carliane Lopes de Oliveira - Psicóloga",
-      },
-    ],
+    siteName: "Carliane Lopes de Oliveira — Psicóloga",
     locale: "pt_BR",
+    alternateLocale: ["en", "es"],
     type: "website",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Carliane Lopes de Oliveira | Psicóloga em Recife",
-    description: "Cuide da sua saúde mental com acolhimento, técnica e segurança.",
-    images: ["/images/carliane2-nf4qo.jpeg"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true },
 }
 
 export const viewport: Viewport = {
-  themeColor: "#91A8D0",
+  themeColor: "#22345F",
   width: "device-width",
   initialScale: 1,
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${lora.variable} ${lato.variable}`}>
+    <html lang="pt-BR" className={`${newsreader.variable} ${figtree.variable}`}>
       <head>
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
@@ -99,12 +80,6 @@ export default function RootLayout({
             gtag('config', 'AW-17768277279');
           `}
         </Script>
-        <Script
-          id="sa-dynamic-optimization"
-          strategy="afterInteractive"
-          data-uuid="9aa30e51-422c-4af6-b662-5e9b6d4f3899"
-          src="data:text/javascript;base64,dmFyIHNjcmlwdCA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoInNjcmlwdCIpO3NjcmlwdC5zZXRBdHRyaWJ1dGUoIm5vd3Byb2NrZXQiLCAiIik7c2NyaXB0LnNldEF0dHJpYnV0ZSgibml0cm8tZXhjbHVkZSIsICIiKTtzY3JpcHQuc3JjID0gImh0dHBzOi8vZGFzaGJvYXJkLnNlYXJjaGF0bGFzLmNvbS9zY3JpcHRzL2R5bmFtaWNfb3B0aW1pemF0aW9uLmpzIjtzY3JpcHQuZGF0YXNldC51dWlkID0gIjlhYTMwZTUxLTQyMmMtNGFmNi1iNjYyLTVlOWI2ZDRmMzg5OSI7c2NyaXB0LmlkID0gInNhLWR5bmFtaWMtb3B0aW1pemF0aW9uLWxvYWRlciI7ZG9jdW1lbnQuaGVhZC5hcHBlbmRDaGlsZChzY3JpcHQpOw=="
-        />
       </head>
       <body className="font-sans antialiased">
         <noscript>
@@ -115,6 +90,8 @@ export default function RootLayout({
             style={{ display: "none", visibility: "hidden" }}
           />
         </noscript>
+        {/* LanguageProvider serve apenas às páginas legadas ainda não migradas
+            (terapia-sem-fronteiras e avaliação psicológica). Sai na fase 2. */}
         <LanguageProvider>{children}</LanguageProvider>
         <Analytics />
       </body>
