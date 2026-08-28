@@ -462,7 +462,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="1.8.0", PROVA=new Date(2026,10,29);
+const VERSAO="1.9.0", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq;
@@ -549,7 +549,7 @@ const CHAVE="petropsi.estado.v1";
 const ESTADO_INICIAL=()=>({versaoEstado:1,criadoEm:hoje(),
  perfil:{horasSemana:12},
  config:{tema:"auto",voz:"",velocidade:1,metaDiariaCartoes:40,metaDiariaQuestoes:20},
- mastery:{},questoes:{},flashcards:{},simulados:[],cadernoErros:[],sessoes:[],notas:{},discursivas:[],ultimoLocal:null,plano:null,
+ mastery:{},questoes:{},flashcards:{},simulados:[],cadernoErros:[],sessoes:[],notas:{},discursivas:[],ultimoLocal:null,plano:null,planoAnterior:null,
  game:{xp:0,streak:0,melhorStreak:0,ultimoDia:"",escudos:0,conquistas:{},missoes:{dia:"",itens:[]}},
  conteudoLido:{},audioOuvido:{},checkpoint:{}});
 let S=ESTADO_INICIAL();
@@ -708,9 +708,16 @@ function nosDeHoje(){
  try{
   const P=geraPlano(false);
   const d=(P.dias||[]).find(x=>x.data===hoje());
-  if(d&&d.nos&&d.nos.length)return {nos:d.nos.filter(id=>NOMAP[id]),fase:d.fase,doPlano:true};
+  if(d&&d.nos&&d.nos.length){
+   const base=d.nos.filter(id=>NOMAP[id]);
+   // auto-conserto: um nó começado e não terminado nunca some do dia de hoje,
+   // mesmo que o plano tenha sido refeito antes desta versão existir.
+   const presos=nosEmAndamento().slice(0,2);
+   const lista=presos.filter(id=>base.indexOf(id)<0).concat(base);
+   return {nos:lista.slice(0,Math.max(base.length,presos.length)),fase:d.fase,doPlano:true,presos:presos};
+  }
  }catch(e){}
- return {nos:proximosNos(3).map(x=>x.no.id),fase:"novo",doPlano:false};
+ return {nos:proximosNos(3).map(x=>x.no.id),fase:"novo",doPlano:false,presos:[]};
 }
 function planoDesatualizado(){
  const h=nosDeHoje();
@@ -1064,11 +1071,29 @@ function projecaoTermino(){
  const alvo=new Date();alvo.setDate(alvo.getDate()+d);
  return {dias:d,data:alvo.toISOString().slice(0,10),aTempo:d<=m.diasNovo};
 }
+// Nós que ela começou e ainda não terminou. Refazer o plano nunca pode tirá-los do dia de hoje.
+function nosEmAndamento(){
+ const out=[];
+ const add=id=>{if(id&&NOMAP[id]&&out.indexOf(id)<0)out.push(id)};
+ Object.keys(S.conteudoLido||{}).forEach(id=>{
+  const c=S.conteudoLido[id]||{};
+  const lidos=(c.blocos||[]).length;
+  if(!lidos)return;
+  const tot=((CONTMAP[id]||{blocos:[]}).blocos||[]).length;
+  if(tot&&lidos>=tot)return;                       // terminou: não precisa segurar
+  if(c.em&&diasEntre(c.em,hoje())<=3)add(id);      // mexeu nos últimos 3 dias
+ });
+ const ul=S.ultimoLocal;
+ if(ul&&ul.arg&&ul.em&&diasEntre(ul.em,hoje())<=3)add(ul.arg);
+ return out;
+}
 function geraPlano(forcar){
  const p=S.plano;
  if(!forcar&&p&&p.geradoEm&&diasEntre(p.geradoEm,hoje())<7&&p.dias&&p.dias.length)return p;
+ if(p&&p.dias&&p.dias.length)S.planoAnterior={geradoEm:p.geradoEm,dias:p.dias,trocadoEm:hoje()};
  const diasRestantes=Math.max(1,diasEntre(hoje(),PROVA.toISOString().slice(0,10)));
  const ordem=NOS.map(n=>({id:n.id,p:prioridade(n.id)})).sort((a,b)=>b.p-a.p).map(x=>x.id);
+ const presos=nosEmAndamento().slice(0,3);         // entram no dia de hoje, na frente
  const dias=[];
  const diasNovo=Math.max(1,diasRestantes-RESERVA_REVISAO);
  let i=0;
@@ -1079,11 +1104,36 @@ function geraPlano(forcar){
   const revisao=d>=diasNovo;
   const porDia=revisao?3:(dow===0?1:2);
   const ns=[];
-  for(let k=0;k<porDia;k++){ns.push(ordem[i%ordem.length]);i++;}
-  dias.push({data:iso,nos:ns,fase:revisao?"revisao":"novo"});
+  if(d===0)presos.forEach(id=>{if(ns.indexOf(id)<0)ns.push(id)});
+  let giros=0;
+  while(ns.length<porDia&&giros<ordem.length*2){
+   const id=ordem[i%ordem.length];i++;giros++;
+   if(ns.indexOf(id)<0)ns.push(id);
+  }
+  dias.push({data:iso,nos:ns,fase:revisao?"revisao":"novo",preso:d===0&&presos.length?presos.slice():null});
  }
  S.plano={geradoEm:hoje(),dias:dias};salva();
  return S.plano;
+}
+function podeDesfazerPlano(){
+ const a=S.planoAnterior;
+ return !!(a&&a.dias&&a.dias.length&&a.trocadoEm&&diasEntre(a.trocadoEm,hoje())<=2);
+}
+function refazPlano(){
+ const presos=nosEmAndamento().slice(0,3).map(id=>(NOMAP[id]||{}).titulo).filter(Boolean);
+ geraPlano(true);
+ toast("Plano refeito",
+  presos.length?("Reordenado pela sua prioridade de hoje. Mantive no dia de hoje o que você já tinha começado: "+presos.join(", ")+". Se preferir o plano antigo, use \u201cVoltar ao plano anterior\u201d."):
+                "Reordenado pela sua prioridade de hoje. Se preferir o plano antigo, use \u201cVoltar ao plano anterior\u201d.",
+  "ok");
+ roteia();
+}
+function desfazPlano(){
+ if(!podeDesfazerPlano())return false;
+ const a=S.planoAnterior;
+ S.plano={geradoEm:a.geradoEm,dias:a.dias};
+ S.planoAnterior=null;salva();
+ return true;
 }
 
 /* ---------------- PAINEL ---------------- */
@@ -1204,8 +1254,10 @@ VIEWS.painel=function(v){
  H.nos.forEach((id,i)=>{
   const nn=NOMAP[id];if(!nn)return;
   const b=el("button","raillink");b.style.cssText="align-items:flex-start;padding:10px;border:1px solid var(--line);margin-bottom:7px";
-  const feito=(S.conteudoLido[id]||{}).em===hoje();
-  b.innerHTML='<span class="pill '+(feito?"ok":"acc")+'" style="margin-top:1px">'+(feito?"✓":(i+1)+"º")+'</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(nn.titulo)+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+esc(porqueEstudar(id))+'</span></span>';
+  const clx=S.conteudoLido[id]||{},totx=((CONTMAP[id]||{blocos:[]}).blocos||[]).length;
+  const feito=totx?((clx.blocos||[]).length>=totx):(clx.em===hoje());
+  const retomando=(H.presos||[]).indexOf(id)>=0;
+  b.innerHTML='<span class="pill '+(feito?"ok":"acc")+'" style="margin-top:1px">'+(feito?"✓":(i+1)+"º")+'</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(nn.titulo)+(retomando?' <span class="pill" style="font-size:9px;vertical-align:middle">retomando</span>':'')+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+(retomando?"Você começou este nó e ainda não terminou — ele fica aqui até você fechar.":esc(porqueEstudar(id)))+'</span></span>';
   b.onclick=()=>vai(CONTMAP[id]?"conteudo":"no",id);cp.appendChild(b);
  });
  const rod=el("div");rod.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px";
@@ -1215,8 +1267,13 @@ VIEWS.painel=function(v){
  if(planoDesatualizado()){
   rod.appendChild(el("span","pill warn","seus números mudaram desde que o plano foi feito"));
   const br3=el("button","btn sm","Refazer o plano");
-  br3.onclick=()=>{geraPlano(true);toast("Plano refeito","Reordenado pela sua prioridade de hoje.","ok");roteia()};
+  br3.onclick=()=>{refazPlano()};
   rod.appendChild(br3);
+ }
+ if(podeDesfazerPlano()){
+  const bd=el("button","btn sec sm","Voltar ao plano anterior");
+  bd.onclick=()=>{if(desfazPlano()){toast("Plano restaurado","Voltei ao plano que estava valendo antes.","ok");roteia()}};
+  rod.appendChild(bd);
  }
  cp.appendChild(rod);
  g2.appendChild(cp);
@@ -1311,8 +1368,13 @@ VIEWS.plano=function(v){
  const cab=el("div","card");cab.style.cssText="margin-bottom:13px;display:flex;gap:9px;flex-wrap:wrap;align-items:center";
  cab.appendChild(el("span",null,'<span style="font-size:13px;color:var(--ink-2)">Gerado em '+esc((P.geradoEm||"").split("-").reverse().join("/"))+'. Refaz sozinho em '+Math.max(0,7-diasEntre(P.geradoEm,hoje()))+' dia(s).</span>'));
  const br=el("button","btn sec sm","Refazer agora");
- br.onclick=()=>{geraPlano(true);toast("Plano refeito","Reordenado pela sua prioridade de hoje.","ok");roteia()};
+ br.onclick=()=>{refazPlano()};
  cab.appendChild(br);
+ if(podeDesfazerPlano()){
+  const bd=el("button","btn sec sm","Voltar ao plano anterior");
+  bd.onclick=()=>{if(desfazPlano()){toast("Plano restaurado","Voltei ao plano que estava valendo antes.","ok");roteia()}};
+  cab.appendChild(bd);
+ }
  v.appendChild(cab);
 
  // agrupa por semana
@@ -2678,7 +2740,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (1.9.0):</b> refazer o plano de estudos não tira mais do dia de hoje o nó que você começou e ainda não terminou — ele fica marcado como “retomando” até você fechar. E, se o plano mudar e você preferir o anterior, aparece o botão “Voltar ao plano anterior”.</div>';
  v.appendChild(c4);
 };
 
