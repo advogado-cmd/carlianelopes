@@ -462,7 +462,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="1.6.0", PROVA=new Date(2026,10,29);
+const VERSAO="1.7.0", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq;
@@ -507,6 +507,36 @@ function md(t){ // markdown mínimo e seguro
   }
   fimUl();fimTb();return o.join("");
 }
+function relatarErro(e,onde){
+ const det={quando:new Date().toISOString(),onde:onde||ROTA,
+  mensagem:(e&&e.message)||String(e),
+  pilha:String((e&&e.stack)||"").split("\n").slice(0,6).join("\n"),
+  rota:location.hash,endereco:location.host||"arquivo local",versao:VERSAO,
+  questao:(typeof SES!=="undefined"&&SES&&SES.ids)?SES.ids[SES.idx]:null,
+  navegador:navigator.userAgent.slice(0,140)};
+ try{S.ultimoErro=det;localStorage.setItem("petropsi.ultimoerro",JSON.stringify(det));}catch(x){}
+ return det;
+}
+function painelDeErro(det){
+ const txt="PETROPSI v"+det.versao+"\n"+det.quando+"\nrota: "+det.rota+"\nquestão: "+(det.questao||"—")+
+  "\nendereço: "+det.endereco+"\nerro: "+det.mensagem+"\n"+det.pilha+"\n"+det.navegador;
+ return '<div class="card" style="border-color:var(--crit)">'+
+  '<h3 style="color:var(--crit)">Alguma coisa falhou nesta tela</h3>'+
+  '<div style="font-size:14px;line-height:1.6;color:var(--ink-2);margin-bottom:13px">Seu progresso está salvo — nada se perdeu. '+
+  'Use os botões abaixo para continuar, e copie o relatório para eu poder corrigir.</div>'+
+  '<pre style="background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:11px;font-size:11px;overflow-x:auto;white-space:pre-wrap;margin:0 0 13px">'+esc(txt)+'</pre>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+  '<button class="btn" onclick="location.hash=\'#/painel\'">Voltar ao painel</button>'+
+  '<button class="btn sec" onclick="location.reload()">Recarregar</button>'+
+  '<button class="btn sec" id="btnCopiaErro">Copiar relatório</button></div></div>';
+}
+window.addEventListener("error",function(ev){
+ const det=relatarErro(ev.error||{message:ev.message},"global");
+ console.error("PETROPSI:",det);
+});
+window.addEventListener("unhandledrejection",function(ev){
+ relatarErro(ev.reason||{message:"promessa rejeitada"},"promessa");
+});
 function toast(titulo,sub,tipo){const t=el("div","toast "+(tipo||""),"<b>"+esc(titulo)+"</b>"+(sub?"<small>"+esc(sub)+"</small>":""));$("#toasts").appendChild(t);setTimeout(()=>{t.style.opacity="0";t.style.transition="opacity .4s";setTimeout(()=>t.remove(),420)},4200);}
 function modal(html){$("#modalBody").innerHTML=html;$("#modal").classList.add("on");}
 function fechaModal(){$("#modal").classList.remove("on");}
@@ -720,7 +750,7 @@ const MISSOES=[
  {id:"cartoes",titulo:d=>"Revisar "+d+" cartões vencidos",alvo:()=>Math.min(30,Math.max(8,cartoesVencidos().length)),prog:()=>contaHoje("cartoes")},
  {id:"questoes",titulo:d=>"Responder "+d+" questões",alvo:()=>S.config.metaDiariaQuestoes||20,prog:()=>contaHoje("questoes")},
  {id:"conteudo",titulo:()=>"Estudar 1 bloco de conteúdo ou ouvir 1 áudio",alvo:()=>1,prog:()=>contaHoje("conteudo")},
- {id:"causas",titulo:()=>"Classificar a causa de todos os erros de hoje",alvo:()=>Math.max(1,contaHoje("errosHoje")),prog:()=>contaHoje("causasHoje")}
+ {id:"causas",titulo:()=>"Classificar a causa de todos os erros de hoje",alvo:()=>Math.max(1,contaHoje("errosHoje")),prog:()=>contaHoje("causasHoje"),ir:()=>vai("erros")}
 ];
 function contaHoje(o){
   const d=hoje();
@@ -737,7 +767,7 @@ function missoesDoDia(){
     const def=MISSOES.find(m=>m.id===it.id);
     const p=def.prog(),done=p>=it.alvo&&it.alvo>0;
     if(done&&!it.pago){it.pago=true;ganhaXp(XP.missao);toast("Missão cumprida","+"+XP.missao+" XP · "+def.titulo(it.alvo),"xp");salva();}
-    return {id:it.id,titulo:def.titulo(it.alvo),alvo:it.alvo,prog:p,done};
+    return {id:it.id,titulo:def.titulo(it.alvo),alvo:it.alvo,prog:p,done,ir:def.ir};
   });
 }
 const CONQUISTAS=[
@@ -807,7 +837,7 @@ const MENU=[
  {g:"Início",itens:[{id:"painel",nm:"Painel",ic:"painel"}]},
  {g:"Estudar",itens:[{id:"trilha",nm:"Edital e trilha",ic:"trilha"},{id:"plano",nm:"Plano de estudos",ic:"tempo"},{id:"conteudo",nm:"Conteúdo",ic:"conteudo"},{id:"nr",nm:"Normas Regulamentadoras",ic:"nr"},{id:"vade",nm:"Vade-mécum",ic:"vade"},{id:"mapas",nm:"Mapas mentais",ic:"mapa"},{id:"audio",nm:"Áudio",ic:"audio"}]},
  {g:"Treinar",itens:[{id:"simulados",nm:"Simulados",ic:"simulado"},{id:"banco",nm:"Banco de questões",ic:"banco"},{id:"cartoes",nm:"Flashcards",ic:"cartao"},{id:"discursivas",nm:"Discursivas e redação",ic:"pena"}]},
- {g:"Acompanhar",itens:[{id:"desempenho",nm:"Desempenho",ic:"desemp"},{id:"conquistas",nm:"Conquistas",ic:"conq"},{id:"erros",nm:"Caderno de erros",ic:"erros"},{id:"notas",nm:"Minhas anotações",ic:"nota"}]},
+ {g:"Acompanhar",itens:[{id:"desempenho",nm:"Desempenho",ic:"desemp"},{id:"conquistas",nm:"Conquistas",ic:"conq"},{id:"erros",nm:"Revisar meus erros",ic:"erros"},{id:"notas",nm:"Minhas anotações",ic:"nota"}]},
  {g:"Apoiar",itens:[{id:"tutor",nm:"Tutor e FAQ",ic:"tutor"},{id:"config",nm:"Configurações",ic:"config"}]}
 ];
 const BOTTOM=[{id:"painel",nm:"Painel",ic:"painel"},{id:"trilha",nm:"Trilha",ic:"trilha"},{id:"simulados",nm:"Simulados",ic:"simulado"},{id:"cartoes",nm:"Cartões",ic:"cartao"},{id:"conteudo",nm:"Estudar",ic:"conteudo"}];
@@ -850,7 +880,15 @@ function roteia(){
  const y=window.scrollY;
  const f=VIEWS[ROTA]||VIEWS.painel;
  $("#view").innerHTML="";
- try{f($("#view"),ARG)}catch(e){console.error(e);$("#view").innerHTML='<div class="empty"><b>Algo quebrou nesta tela.</b>'+esc(e.message)+'</div>';}
+ try{f($("#view"),ARG)}catch(e){
+  console.error(e);
+  const det=relatarErro(e,ROTA);
+  $("#view").innerHTML=painelDeErro(det);
+  const bc=document.getElementById("btnCopiaErro");
+  if(bc)bc.onclick=()=>{const t=document.querySelector("#view pre").textContent;
+   if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast("Relatório copiado","Cole na conversa do projeto.","ok")).catch(()=>{});
+  };
+ }
  // Só volta ao topo quando a tela realmente muda. Marcar um bloco como lido
  // re-renderiza a mesma tela — e aí a leitura continua de onde estava.
  if(mudouDeTela)window.scrollTo(0,0); else window.scrollTo(0,y);
@@ -1050,6 +1088,25 @@ VIEWS.painel=function(v){
  cm0.appendChild(rodape);
  v.appendChild(cm0);
 
+ // ---- erros em aberto ----
+ const abertos=S.cadernoErros.filter(e=>!e.resolvido);
+ if(abertos.length){
+  const semCausa=abertos.filter(e=>!e.causaErro).length;
+  const ce3=el("div","card");ce3.style.cssText="margin-bottom:13px;border-color:var(--crit);display:flex;gap:13px;align-items:center;flex-wrap:wrap";
+  ce3.innerHTML='<div style="flex:1;min-width:220px">'+
+   '<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--crit);display:flex;align-items:center;gap:5px">'+ic("erros",12,"var(--crit)")+'caderno de erros</div>'+
+   '<div style="font-weight:600;font-size:14.5px;margin-top:3px">'+abertos.length+' questão(ões) que você errou e ainda não refez</div>'+
+   '<div style="font-size:12px;color:var(--ink-3);margin-top:2px">'+
+   (semCausa?semCausa+' sem causa classificada · ':'')+
+   'um erro sai daqui quando você acerta a mesma questão numa revisão.</div></div>';
+  const bq3=el("button","btn","Revisar meus erros");
+  bq3.onclick=()=>iniciaSessao({modo:"revisaoErros"});
+  const bv3=el("button","btn sec","Abrir o caderno");
+  bv3.onclick=()=>vai("erros");
+  ce3.appendChild(bq3);ce3.appendChild(bv3);
+  v.appendChild(ce3);
+ }
+
  // ---- retomar de onde parou ----
  const ul=S.ultimoLocal;
  if(ul&&ul.arg&&(ul.rota==="conteudo"||ul.rota==="vade"||ul.rota==="no")){
@@ -1085,6 +1142,7 @@ VIEWS.painel=function(v){
  const cm=el("div","card");cm.appendChild(el("h3",null,"Missões de hoje <span class='hint'>reiniciam à meia-noite</span>"));
  missoesDoDia().forEach(m=>{
   const w=el("div","missao"+(m.done?" done":""));
+  if(!m.done&&m.ir){w.style.cursor="pointer";w.onclick=m.ir;}
   w.innerHTML='<span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span>'+
    '<span><span class="mt">'+esc(m.titulo)+'</span><span class="mp"><span class="bar"><i style="width:'+Math.min(100,m.alvo?m.prog/m.alvo*100:0)+'%"></i></span>'+m.prog+" / "+m.alvo+'</span></span>'+
    '<span class="mx">+'+XP.missao+'</span>';
@@ -1309,7 +1367,14 @@ VIEWS.conteudo=function(v,id){
  const bar=el("div","card");bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px;align-items:center";
  const bp=el("button","btn","Modo apresentação");bp.onclick=()=>abrePpt(c);bar.appendChild(bp);
  const ba=el("button","btn sec","Ouvir este módulo");ba.onclick=()=>tocaRoteiro(c);bar.appendChild(ba);
- const bq=el("button","btn sec","Treinar questões");bq.onclick=()=>iniciaSessao({modo:"treino",nos:[id],n:Math.min(15,(QPORNO[id]||[]).length)});bar.appendChild(bq);
+ const nq=(QPORNO[id]||[]).length, nc=(FPORNO[id]||[]).length, ncv=cartoesVencidos(id).length;
+ const bq=el("button","btn sec","Treinar "+Math.min(15,nq)+" questões");
+ bq.onclick=()=>iniciaSessao({modo:"treino",nos:[id],n:Math.min(15,nq)});bar.appendChild(bq);
+ if(nc){
+  const bc2=el("button","btn sec",ncv?"Revisar "+ncv+" cartões vencidos":"Ver "+nc+" cartões");
+  bc2.onclick=()=>vai("cartoes",id);bar.appendChild(bc2);
+ }
+ const bm2=el("button","btn sec","Mapa mental");bm2.onclick=()=>vai("mapas",id);bar.appendChild(bm2);
  const lidos=(S.conteudoLido[id]||{}).blocos||[];
  const primeiroNaoLido=c.blocos.findIndex((_,i)=>lidos.indexOf(i)<0);
  if(primeiroNaoLido>0){
@@ -1347,6 +1412,37 @@ VIEWS.conteudo=function(v,id){
   w.appendChild(ft);
   v.appendChild(w);
  });
+ const cartoesDoNo=FPORNO[id]||[];
+ if(cartoesDoNo.length){
+  const cc=el("div","card");cc.style.cssText="margin-bottom:17px;border-color:var(--accent)";
+  const venc=cartoesVencidos(id).length;
+  const mad=cartoesDoNo.filter(f=>{const x=S.flashcards[f.id];return x&&x.intervalo>=21&&!x.leech}).length;
+  const nunca=cartoesDoNo.filter(f=>!S.flashcards[f.id]).length;
+  cc.appendChild(el("h3",null,ic("cartao",15)+"Cartões deste conteúdo <span class='hint'>"+cartoesDoNo.length+" no total</span>"));
+  cc.appendChild(el("div",null,'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'+
+   '<span class="pill'+(venc?" crit":"")+'">'+venc+' vencidos</span>'+
+   '<span class="pill'+(mad?" ok":"")+'">'+mad+' maduros</span>'+
+   '<span class="pill">'+nunca+' nunca vistos</span></div>'));
+  const lista=el("div");lista.style.cssText="display:flex;flex-direction:column;gap:6px;max-height:230px;overflow-y:auto;margin-bottom:11px";
+  cartoesDoNo.slice(0,40).forEach(f=>{
+   const st=S.flashcards[f.id];
+   const cor=!st?"var(--line-2)":st.leech?"var(--crit)":st.intervalo>=21?"var(--ok)":"var(--accent)";
+   const r=el("div");r.style.cssText="display:grid;grid-template-columns:8px 1fr auto;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px";
+   r.innerHTML='<i style="width:8px;height:8px;border-radius:50%;background:'+cor+';display:block"></i>'+
+    '<span class="serif" style="line-height:1.35">'+esc(f.frente.length>96?f.frente.slice(0,94)+"…":f.frente)+'</span>'+
+    '<span class="mono" style="font-size:10px;color:var(--ink-3);white-space:nowrap">'+(st?(st.proximaRevisao<=hoje()?"vencido":st.proximaRevisao.split("-").reverse().slice(0,2).join("/")):"novo")+'</span>';
+   lista.appendChild(r);
+  });
+  cc.appendChild(lista);
+  if(cartoesDoNo.length>40)cc.appendChild(el("div",null,'<div style="font-size:11.5px;color:var(--ink-3);margin-bottom:9px">e mais '+(cartoesDoNo.length-40)+'.</div>'));
+  const ba=el("div");ba.style.cssText="display:flex;gap:7px;flex-wrap:wrap";
+  const b1=el("button","btn",venc?"Revisar os "+venc+" vencidos":"Revisar estes cartões");
+  b1.onclick=()=>vai("cartoes",id);ba.appendChild(b1);
+  const b2=el("button","btn sec","Treinar questões deste conteúdo");
+  b2.onclick=()=>iniciaSessao({modo:"treino",nos:[id],n:Math.min(15,(QPORNO[id]||[]).length)});ba.appendChild(b2);
+  cc.appendChild(ba);
+  v.appendChild(cc);
+ }
 };
 function rolaAteBloco(i){
  const e=document.getElementById("bloco-"+i);
@@ -1719,7 +1815,15 @@ VIEWS.sessao=function(v){
   if(ce)b.style.cssText="flex:1;justify-content:center;text-align:center;font-family:Archivo,sans-serif;font-weight:600;font-size:15px";
   b.innerHTML='<span class="l">'+a.letra+'</span><span>'+esc(a.texto)+(revelado&&!a.correta?'<span class="porque"><b>'+(ce?"Por quê":"Por que está errada")+':</b> '+esc(a.porQueErrada||"")+'</span>':'')+'</span>';
   if(revelado)b.disabled=true;
-  b.onclick=()=>{responde(q,a.letra);};
+  b.onclick=()=>{
+   try{ responde(q,a.letra); }
+   catch(err){
+    const det=relatarErro(err,"responder");
+    console.error(err);
+    toast("Falha ao registrar a resposta","O erro foi guardado. Vá em Configurações para copiar o relatório.","");
+    try{ roteia(); }catch(e2){}
+   }
+  };
   alts.appendChild(b);
  });
  box.appendChild(alts);
@@ -1870,7 +1974,7 @@ function renderResultado(v){
   SES=null;salvaSessao();if(!ids.length){toast("Nenhum erro","Nada a revisar.","ok");vai("painel");return}
   SES={modo:"treino",titulo:"Revisão do simulado",ids:emb(ids),idx:0,respostas:{},marcadas:{},inicio:Date.now(),limite:0,fim:null};salvaSessao();roteia();};
  acts.appendChild(b1);
- const b2=el("button","btn sec","Ir para o caderno de erros");b2.onclick=()=>{SES=null;salvaSessao();vai("erros")};acts.appendChild(b2);
+ const b2=el("button","btn sec","Abrir o caderno de erros");b2.onclick=()=>{SES=null;salvaSessao();vai("erros")};acts.appendChild(b2);
  const b3=el("button","btn sec","Voltar ao painel");b3.onclick=()=>{SES=null;salvaSessao();vai("painel")};acts.appendChild(b3);
  v.appendChild(acts);
 }
@@ -2003,7 +2107,7 @@ VIEWS.banco=function(v){
 };
 
 /* ---------------- FLASHCARDS ---------------- */
-let FCQ=null,FCI=0,FCVER=false;
+let FCQ=null,FCI=0,FCVER=false,FCERRADOS=[];
 VIEWS.cartoes=function(v,no){
  const venc=cartoesVencidos(no);
  v.appendChild(el("h1","vt","Flashcards"));
@@ -2017,6 +2121,23 @@ VIEWS.cartoes=function(v,no){
   const lee=FCS.filter(f=>(S.flashcards[f.id]||{}).leech).length;
   g.appendChild(cartaoStat("Vazando",lee,lee?"5+ falhas — vire conteúdo":"nenhum"));
   v.appendChild(g);
+  if(FCERRADOS.length){
+   const ce2=el("div","card");ce2.style.cssText="margin-bottom:13px;border-color:var(--crit)";
+   ce2.appendChild(el("h3",null,ic("alerta",15)+"Você errou "+FCERRADOS.length+" cartão(ões) na última rodada"));
+   ce2.appendChild(el("div",null,'<div style="font-size:13.5px;color:var(--ink-2);line-height:1.55;margin-bottom:11px">O SM-2 já reagendou cada um para amanhã. Mas rever agora, com o erro fresco, é o que faz a diferença.</div>'));
+   const lst=el("div");lst.style.cssText="display:flex;flex-direction:column;gap:5px;margin-bottom:11px;max-height:170px;overflow-y:auto";
+   FCERRADOS.slice(0,12).forEach(f=>{
+    lst.appendChild(el("div",null,'<div style="font-size:12.5px;color:var(--ink-2);line-height:1.4;padding:5px 0;border-bottom:1px solid var(--line)"><span class="pill crit" style="margin-right:7px">'+esc(f.no)+'</span>'+esc(f.frente.length>92?f.frente.slice(0,90)+"…":f.frente)+'</div>'));
+   });
+   ce2.appendChild(lst);
+   const bb3=el("div");bb3.style.cssText="display:flex;gap:7px;flex-wrap:wrap";
+   const br2=el("button","btn","Revisar os "+FCERRADOS.length+" que errei");
+   br2.onclick=()=>{FCQ=emb(FCERRADOS.slice());FCERRADOS=[];FCI=0;FCVER=false;roteia()};
+   const bd2=el("button","btn sec","Deixar para amanhã");
+   bd2.onclick=()=>{FCERRADOS=[];roteia()};
+   bb3.appendChild(br2);bb3.appendChild(bd2);ce2.appendChild(bb3);
+   v.appendChild(ce2);
+  }
   const c=el("div","card");c.style.marginBottom="13px";
   if(venc.length){
    c.innerHTML='<h3>Fila de hoje</h3><div style="font-size:14px;color:var(--ink-2);margin-bottom:13px">'+venc.length+' cartão(ões) vencido(s). Limite diário: '+(S.config.metaDiariaCartoes||40)+'.</div>';
@@ -2053,18 +2174,20 @@ VIEWS.cartoes=function(v,no){
   b.onclick=()=>{FCVER=true;roteia()};v.appendChild(b);
  }else{
   const g=el("div","grades");
-  [[0,"Errei","volta pra 1 dia","g0"],[3,"Difícil","",""],[4,"Bom","",""],[5,"Fácil","","g5"]].forEach(([q,t,s,cl])=>{
+  [[0,"Errei","volta para 1 dia","g0"],[3,"Difícil","acertei com esforço",""],[4,"Acertei","",""],[5,"Fácil","de primeira","g5"]].forEach(([q,t,s,cl])=>{
    const b=el("button",cl,"<span>"+t+"</span>"+(s?"<small>"+s+"</small>":"<small>&nbsp;</small>"));
    b.onclick=()=>{
     agendaCartao(f.id,q);
     let xp=XP.cartao;if(q>=4)xp+=XP.cartaoBom;ganhaXp(xp);
     registraAtividade(1);calcMastery(f.no);checaConquistas();salva();
+    if(q<3)FCERRADOS.push(f); else {const i2=FCERRADOS.indexOf(f);if(i2>=0)FCERRADOS.splice(i2,1);}
     FCI++;FCVER=false;
     if(FCI>=FCQ.length){FCQ=null;toast("Fila concluída","Cartões revisados hoje: "+contaHoje("cartoes"),"ok");}
     roteia();
    };g.appendChild(b);
   });
   v.appendChild(g);
+  v.appendChild(el("div",null,'<div style="font-size:11.5px;color:var(--ink-3);margin-top:9px;line-height:1.5;text-align:center">Errei devolve o cartão para amanhã · Difícil encurta o intervalo · Acertei mantém o ritmo · Fácil alarga o intervalo</div>'));
  }
  const bs=el("button","btn sec sm","Encerrar revisão");bs.style.marginTop="13px";
  bs.onclick=()=>{FCQ=null;roteia()};v.appendChild(bs);
@@ -2433,6 +2556,23 @@ VIEWS.config=function(v){
   b.onclick=()=>{S.config.tema=k;aplicaTema();salva();roteia()};tb.appendChild(b);});
  c3.appendChild(tb);v.appendChild(c3);
 
+ let ue=null;
+ try{ ue=S.ultimoErro||JSON.parse(localStorage.getItem("petropsi.ultimoerro")||"null"); }catch(e){}
+ if(ue){
+  const ce=el("div","card");ce.style.cssText="margin-bottom:13px;border-color:var(--crit)";
+  ce.appendChild(el("h3",null,"Último problema registrado"));
+  const txt="PETROPSI v"+ue.versao+"\n"+ue.quando+"\nrota: "+ue.rota+"\nquestão: "+(ue.questao||"—")+
+   "\nendereço: "+ue.endereco+"\nerro: "+ue.mensagem+"\n"+(ue.pilha||"")+"\n"+(ue.navegador||"");
+  ce.appendChild(el("div",null,'<div style="font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:11px">Se algo falhou, copie este relatório e mande na conversa do projeto — é o que permite corrigir.</div>'+
+   '<pre style="background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:11px;font-size:11px;overflow-x:auto;white-space:pre-wrap;margin:0 0 11px">'+esc(txt)+'</pre>'));
+  const bb2=el("div");bb2.style.cssText="display:flex;gap:8px;flex-wrap:wrap";
+  const bcp=el("button","btn sm","Copiar relatório");
+  bcp.onclick=()=>{if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast("Copiado","Cole na conversa do projeto.","ok")).catch(()=>{});};
+  const blp=el("button","btn sec sm","Limpar");
+  blp.onclick=()=>{delete S.ultimoErro;try{localStorage.removeItem("petropsi.ultimoerro")}catch(e){}salva();roteia()};
+  bb2.appendChild(bcp);bb2.appendChild(blp);ce.appendChild(bb2);
+  v.appendChild(ce);
+ }
  const c4=el("div","card");
  c4.appendChild(el("h3",null,"Sobre esta versão"));
  const nqA=QS.filter(q=>q.origem==="prova-anterior").length;
