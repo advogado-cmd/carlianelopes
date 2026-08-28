@@ -462,7 +462,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="1.7.0", PROVA=new Date(2026,10,29);
+const VERSAO="1.8.0", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq;
@@ -483,6 +483,8 @@ const hoje=()=>new Date().toISOString().slice(0,10);
 const diasEntre=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pct=v=>Math.round(v*100);
+const num=(v,casas)=>Number(v).toFixed(casas==null?1:casas).replace(".",",");
+const plural=(v,sing,plur)=>Math.abs(v)===1?sing:plur;
 const emb=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const hhmmss=s=>{s=Math.max(0,Math.floor(s));return [Math.floor(s/3600),Math.floor(s/60)%60,s%60].map(x=>String(x).padStart(2,"0")).join(":");};
 function md(t){ // markdown mínimo e seguro
@@ -691,10 +693,30 @@ function porqueEstudar(noId){
   if(m<0.65)return "Domínio em "+pct(m)+"% e "+dias+" dias sem revisão — dá para consolidar rápido.";
   return "Revisão de manutenção: "+pct(m)+"% de domínio, "+dias+" dias sem tocar.";
 }
-function pesoTxt(n){const g=GRUPOS.find(g=>g.id===n.grupo);const qs=g?g.questoesProva:0;const tot=(GRPNOS[n.grupo]||[]).length;
-  return "cerca de "+(Math.round(qs/Math.max(1,tot)*10)/10)+" questão(ões)";}
+function pesoTxt(n){
+ const g=GRUPOS.find(g=>g.id===n.grupo);
+ const qs=g?g.questoesProva:0,tot=(GRPNOS[n.grupo]||[]).length;
+ const v=qs/Math.max(1,tot);
+ if(v>=0.95){const r=Math.round(v);return "cerca de "+r+" "+plural(r,"questão","questões");}
+ return "cerca de "+num(v)+" questão";
+}
 function proximosNos(k){
   return NOS.map(n=>({no:n,p:prioridade(n.id)})).sort((a,b)=>b.p-a.p).slice(0,k||3);
+}
+// O painel e o plano precisam dizer a MESMA coisa. A fonte da verdade é o plano.
+function nosDeHoje(){
+ try{
+  const P=geraPlano(false);
+  const d=(P.dias||[]).find(x=>x.data===hoje());
+  if(d&&d.nos&&d.nos.length)return {nos:d.nos.filter(id=>NOMAP[id]),fase:d.fase,doPlano:true};
+ }catch(e){}
+ return {nos:proximosNos(3).map(x=>x.no.id),fase:"novo",doPlano:false};
+}
+function planoDesatualizado(){
+ const h=nosDeHoje();
+ if(!h.doPlano)return false;
+ const vivos=proximosNos(5).map(x=>x.no.id);
+ return !h.nos.some(id=>vivos.indexOf(id)>=0);
 }
 
 /* ---------- nota projetada ---------- */
@@ -750,24 +772,49 @@ const MISSOES=[
  {id:"cartoes",titulo:d=>"Revisar "+d+" cartões vencidos",alvo:()=>Math.min(30,Math.max(8,cartoesVencidos().length)),prog:()=>contaHoje("cartoes")},
  {id:"questoes",titulo:d=>"Responder "+d+" questões",alvo:()=>S.config.metaDiariaQuestoes||20,prog:()=>contaHoje("questoes")},
  {id:"conteudo",titulo:()=>"Estudar 1 bloco de conteúdo ou ouvir 1 áudio",alvo:()=>1,prog:()=>contaHoje("conteudo")},
- {id:"causas",titulo:()=>"Classificar a causa de todos os erros de hoje",alvo:()=>Math.max(1,contaHoje("errosHoje")),prog:()=>contaHoje("causasHoje"),ir:()=>vai("erros")}
+ {id:"causas",dinamico:true,
+  titulo:d=>d?("Classificar a causa de "+d+" "+plural(d,"erro","erros")+" em aberto"):"Nenhum erro pendente de classificação",
+  alvo:()=>errosSemCausa()+contaHoje("causasHoje"),
+  prog:()=>contaHoje("causasHoje"), ir:()=>vai("erros")}
 ];
+const errosSemCausa=()=>S.cadernoErros.filter(e=>!e.resolvido&&!e.causaErro).length;
+function classificaErro(questaoId,causa){
+ const st=S.questoes[questaoId];
+ if(st&&st.tentativas&&st.tentativas.length){
+  for(let i=st.tentativas.length-1;i>=0;i--){ if(!st.tentativas[i].correta){st.tentativas[i].causaErro=causa;break;} }
+ }
+ let e=S.cadernoErros.find(x=>x.questaoId===questaoId&&!x.resolvido)||S.cadernoErros.find(x=>x.questaoId===questaoId);
+ if(e){e.causaErro=causa;e.classificadoEm=hoje();}
+ ganhaXp(XP.causaErro);salva();
+}
+function botoesCausa(questaoId,depois){
+ const w=el("div","causas");
+ CAUSAS.forEach(([k,t])=>{
+  const b=el("button","btn sec",t);b.type="button";
+  b.onclick=()=>{classificaErro(questaoId,k);if(depois)depois();};
+  w.appendChild(b);
+ });
+ return w;
+}
 function contaHoje(o){
   const d=hoje();
   if(o==="cartoes")return Object.values(S.flashcards).filter(f=>f.ultimaRevisao===d).length;
   if(o==="questoes"){let n=0;Object.values(S.questoes).forEach(q=>(q.tentativas||[]).forEach(t=>{if(t.data===d)n++}));return n;}
   if(o==="conteudo"){let n=0;Object.values(S.conteudoLido).forEach(c=>{if(c.em===d)n+=(c.blocos||[]).length;});Object.values(S.audioOuvido).forEach(a=>{if(a===d)n++;});return n;}
   if(o==="errosHoje"){let n=0;Object.values(S.questoes).forEach(q=>(q.tentativas||[]).forEach(t=>{if(t.data===d&&!t.correta)n++}));return n;}
-  if(o==="causasHoje"){let n=0;Object.values(S.questoes).forEach(q=>(q.tentativas||[]).forEach(t=>{if(t.data===d&&!t.correta&&t.causaErro)n++}));return n;}
+  if(o==="causasHoje")return S.cadernoErros.filter(e=>e.classificadoEm===d).length;
   return 0;
 }
 function missoesDoDia(){
   if(S.game.missoes.dia!==hoje()){S.game.missoes={dia:hoje(),itens:MISSOES.map(m=>({id:m.id,alvo:m.alvo(),pago:false}))};salva();}
   return S.game.missoes.itens.map(it=>{
     const def=MISSOES.find(m=>m.id===it.id);
-    const p=def.prog(),done=p>=it.alvo&&it.alvo>0;
-    if(done&&!it.pago){it.pago=true;ganhaXp(XP.missao);toast("Missão cumprida","+"+XP.missao+" XP · "+def.titulo(it.alvo),"xp");salva();}
-    return {id:it.id,titulo:def.titulo(it.alvo),alvo:it.alvo,prog:p,done,ir:def.ir};
+    // metas dinâmicas são recalculadas o dia inteiro; as fixas ficam como foram geradas
+    const alvo=def.dinamico?def.alvo():it.alvo;
+    const p=def.prog();
+    const done=alvo<=0?true:p>=alvo;
+    if(done&&!it.pago){it.pago=true;ganhaXp(XP.missao);toast("Missão cumprida","+"+XP.missao+" XP · "+def.titulo(alvo),"xp");salva();}
+    return {id:it.id,titulo:def.titulo(alvo),alvo:alvo,prog:p,done,ir:def.ir};
   });
 }
 const CONQUISTAS=[
@@ -956,7 +1003,7 @@ function barraCorte(np){
   const l=el("div","l "+cl);l.style.left=(v/max*100)+"%";c.appendChild(l);
   const t=el("div","lab");t.style.left=(v/max*100)+"%";t.style.color=cl==="el"?"var(--crit)":"var(--ok)";t.textContent=lb;c.appendChild(t);
  });
- const v=el("div","v",np.f1.toFixed(1)+" / 50");c.appendChild(v);
+ const v=el("div","v",num(np.f1)+" / 50");c.appendChild(v);
  w.appendChild(c);
  w.appendChild(el("div",null,'<div style="font-size:11.5px;color:var(--ink-3);line-height:1.45">A linha vermelha é a eliminação do item 7.1.4.3 (50% da Fase 1). A verde é a meta real: só seguem no certame as ranqueadas na Fase 1 até 2× vagas + cadastro de reserva — <b>22 posições</b> em Psicologia/RJ (item 7.1.2 “d”).</div>'));
  return w;
@@ -1126,8 +1173,8 @@ VIEWS.painel=function(v){
  }
 
  const g=el("div","grid g4");g.style.marginBottom="13px";
- g.appendChild(cartaoStat("Nota projetada F1",np.f1.toFixed(1),"de 50 · corte 25","","alvo"));
- g.appendChild(cartaoStat("Nota projetada F2",np.f2.toFixed(1),"de 20 · corte 10","","alvo"));
+ g.appendChild(cartaoStat("Nota projetada F1",num(np.f1),"de 50 · corte 25","","alvo"));
+ g.appendChild(cartaoStat("Nota projetada F2",num(np.f2),"de 20 · corte 10","","alvo"));
  g.appendChild(cartaoStat("Questões respondidas",totalRespondidas(),"no total","","banco"));
  g.appendChild(cartaoStat("Cartões vencidos",venc,venc?"revisar hoje":"fila em dia","","cartao"));
  v.appendChild(g);
@@ -1144,19 +1191,34 @@ VIEWS.painel=function(v){
   const w=el("div","missao"+(m.done?" done":""));
   if(!m.done&&m.ir){w.style.cursor="pointer";w.onclick=m.ir;}
   w.innerHTML='<span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span>'+
-   '<span><span class="mt">'+esc(m.titulo)+'</span><span class="mp"><span class="bar"><i style="width:'+Math.min(100,m.alvo?m.prog/m.alvo*100:0)+'%"></i></span>'+m.prog+" / "+m.alvo+'</span></span>'+
+   '<span><span class="mt">'+esc(m.titulo)+'</span><span class="mp"><span class="bar"><i style="width:'+(m.alvo?Math.min(100,m.prog/m.alvo*100):100)+'%"></i></span>'+(m.alvo?m.prog+" / "+m.alvo:"nada pendente")+'</span></span>'+
    '<span class="mx">+'+XP.missao+'</span>';
   cm.appendChild(w);
  });
  g2.appendChild(cm);
 
- // próximos nós
- const cp=el("div","card");cp.appendChild(el("h3",null,"O que estudar agora <span class='hint'>peso × lacuna × esquecimento</span>"));
- proximosNos(3).forEach((x,i)=>{
+ // o que estudar hoje — vem do plano, para painel e plano nunca se contradizerem
+ const H=nosDeHoje();
+ const cp=el("div","card");
+ cp.appendChild(el("h3",null,"O que estudar hoje <span class='hint'>"+(H.doPlano?(H.fase==="revisao"?"dia de revisão do plano":"vem do seu plano de estudos"):"peso × lacuna × esquecimento")+"</span>"));
+ H.nos.forEach((id,i)=>{
+  const nn=NOMAP[id];if(!nn)return;
   const b=el("button","raillink");b.style.cssText="align-items:flex-start;padding:10px;border:1px solid var(--line);margin-bottom:7px";
-  b.innerHTML='<span class="pill acc" style="margin-top:1px">'+(i+1)+'º</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(x.no.titulo)+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+esc(porqueEstudar(x.no.id))+'</span></span>';
-  b.onclick=()=>vai("no",x.no.id);cp.appendChild(b);
+  const feito=(S.conteudoLido[id]||{}).em===hoje();
+  b.innerHTML='<span class="pill '+(feito?"ok":"acc")+'" style="margin-top:1px">'+(feito?"✓":(i+1)+"º")+'</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(nn.titulo)+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+esc(porqueEstudar(id))+'</span></span>';
+  b.onclick=()=>vai(CONTMAP[id]?"conteudo":"no",id);cp.appendChild(b);
  });
+ const rod=el("div");rod.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px";
+ if(H.doPlano){
+  const bp2=el("button","btn sec sm","Ver a semana no plano");bp2.onclick=()=>vai("plano");rod.appendChild(bp2);
+ }
+ if(planoDesatualizado()){
+  rod.appendChild(el("span","pill warn","seus números mudaram desde que o plano foi feito"));
+  const br3=el("button","btn sm","Refazer o plano");
+  br3.onclick=()=>{geraPlano(true);toast("Plano refeito","Reordenado pela sua prioridade de hoje.","ok");roteia()};
+  rod.appendChild(br3);
+ }
+ cp.appendChild(rod);
  g2.appendChild(cp);
  v.appendChild(g2);
 
@@ -1840,10 +1902,8 @@ VIEWS.sessao=function(v){
    const st=S.questoes[q.id],ult=st&&st.tentativas&&st.tentativas[st.tentativas.length-1];
    if(ult&&!ult.causaErro){
     fb.appendChild(el("div",null,'<div style="font-size:12.5px;font-weight:600;margin-top:13px">Por que você errou? <span class="pill xp">+'+XP.causaErro+' XP</span></div>'));
-    const cs=el("div","causas");
-    CAUSAS.forEach(([k,t])=>{const b=el("button","btn sec",t);
-     b.onclick=()=>{ult.causaErro=k;ganhaXp(XP.causaErro);const ce=S.cadernoErros.find(e=>e.questaoId===q.id&&!e.resolvido);if(ce)ce.causaErro=k;salva();roteia()};cs.appendChild(b);});
-    fb.appendChild(cs);
+    fb.appendChild(botoesCausa(q.id,()=>roteia()));
+    fb.appendChild(el("div",null,'<div style="font-size:11.5px;color:var(--ink-3);margin-top:7px">Se preferir deixar para depois, dá para classificar a qualquer momento em <b>Revisar meus erros</b>.</div>'));
    }else if(ult&&ult.causaErro){
     fb.appendChild(el("div",null,'<div style="font-size:12.5px;color:var(--ink-3);margin-top:11px">Causa registrada: <b>'+esc((CAUSAS.find(c=>c[0]===ult.causaErro)||["",""])[1])+'</b></div>'));
    }
@@ -2273,7 +2333,7 @@ VIEWS.desempenho=function(v){
  const g=el("div","grid g4");g.style.marginBottom="13px";
  const tr=totalRespondidas();let ac=0;Object.values(S.questoes).forEach(q=>(q.tentativas||[]).forEach(t=>{if(t.correta)ac++}));
  g.appendChild(cartaoStat("Acerto geral",tr?Math.round(ac/tr*100)+"%":"—",tr+" questões respondidas"));
- g.appendChild(cartaoStat("Nota projetada",np.total.toFixed(1),"de 70"));
+ g.appendChild(cartaoStat("Nota projetada",num(np.total),"de 70"));
  g.appendChild(cartaoStat("Horas estudadas",(S.sessoes.reduce((a,s)=>a+s.minutos,0)/60).toFixed(1)+"h",S.sessoes.length+" dias ativos"));
  g.appendChild(cartaoStat("Melhor sequência",S.game.melhorStreak,"dias seguidos"));
  v.appendChild(g);
@@ -2348,11 +2408,26 @@ VIEWS.erros=function(v){
  g.appendChild(cartaoStat("Em aberto",abertos.length,""));
  g.appendChild(cartaoStat("Resolvidos",S.cadernoErros.length-abertos.length,""));
  const semC=abertos.filter(e=>!e.causaErro).length;
- g.appendChild(cartaoStat("Sem causa",semC,semC?"classifique para alimentar a análise":"todos classificados"));
+ g.appendChild(cartaoStat("Sem causa",semC,semC?"classifique aqui embaixo":"todos classificados","","alerta"));
  v.appendChild(g);
+ const barE=el("div");barE.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px";
  if(abertos.length){
-  const b=el("button","btn","Revisar todos os erros em aberto");b.style.marginBottom="13px";
-  b.onclick=()=>iniciaSessao({modo:"revisaoErros"});v.appendChild(b);
+  const b=el("button","btn","Refazer todos os erros em aberto");
+  b.onclick=()=>iniciaSessao({modo:"revisaoErros"});barE.appendChild(b);
+ }
+ if(semC){
+  const b2=el("button","btn sec","Classificar os "+semC+" sem causa");
+  b2.onclick=()=>{const alvo=document.querySelector("[data-semcausa]");if(alvo)alvo.scrollIntoView({behavior:"smooth",block:"center"})};
+  barE.appendChild(b2);
+ }
+ v.appendChild(barE);
+ if(semC){
+  const av=el("div","card");av.style.cssText="margin-bottom:13px;border-left:3px solid var(--warn);background:var(--warn-soft)";
+  av.innerHTML='<div style="font-size:13.5px;line-height:1.6"><b>Por que classificar a causa</b><br>'+
+   'Saber <i>por que</i> você errou vale mais que saber <i>que</i> errou. Não saber o conteúdo pede estudo; '+
+   'ler mal o enunciado pede método de leitura; desatenção pede ritmo; pegadinha de literalidade pede decorar o dispositivo. '+
+   'São quatro remédios diferentes, e a análise do Desempenho só funciona se você disser qual foi.</div>';
+  v.appendChild(av);
  }
  if(!S.cadernoErros.length){v.appendChild(el("div","empty","<b>Caderno vazio.</b>Nada errado ainda — ou nada respondido ainda."));return}
  const c=el("div","card");
@@ -2362,14 +2437,35 @@ VIEWS.erros=function(v){
   es.forEach(e=>{
    const q=qById(e.questaoId);if(!q)return;
    const w=el("div");w.style.cssText="border:1px solid var(--line);border-radius:4px;padding:11px;margin-bottom:7px";
+   if(!e.causaErro)w.setAttribute("data-semcausa","1");
+   if(!e.causaErro)w.style.borderLeft="3px solid var(--warn)";
    w.innerHTML='<div class="serif" style="font-size:14px;line-height:1.5;margin-bottom:7px">'+esc(q.enunciado.slice(0,190))+(q.enunciado.length>190?"…":"")+'</div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="mono" style="font-size:10.5px;color:var(--ink-3)">'+esc(e.data.split("-").reverse().join("/"))+'</span>'+
-    (e.causaErro?'<span class="pill warn">'+esc((CAUSAS.find(x=>x[0]===e.causaErro)||["",""])[1])+'</span>':'<span class="pill">sem causa</span>')+'</div>';
+    (e.causaErro?'<span class="pill warn">'+esc((CAUSAS.find(x=>x[0]===e.causaErro)||["",""])[1])+'</span>':'')+'</div>';
+   if(!e.causaErro){
+    w.appendChild(el("div",null,'<div style="font-size:12.5px;font-weight:600;margin:11px 0 6px;display:flex;align-items:center;gap:7px">Por que você errou? <span class="pill xp">+'+XP.causaErro+' XP</span></div>'));
+    w.appendChild(botoesCausa(e.questaoId,()=>roteia()));
+   }else{
+    const tr=el("button","btnota");tr.textContent="trocar a causa";tr.style.marginTop="9px";
+    tr.onclick=()=>{delete e.causaErro;delete e.classificadoEm;salva();roteia()};
+    w.appendChild(tr);
+   }
    const bb=el("div");bb.style.cssText="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap";
+   const b0=el("button","btn sec sm","Ver o gabarito");
+   b0.onclick=()=>{
+    const cor=(q.alternativas.find(a=>a.correta)||{});
+    modal('<h3 style="margin:0 0 9px;font-size:16px">'+esc(q.id)+'</h3>'+
+     '<div class="serif" style="font-size:14.5px;line-height:1.6;margin-bottom:11px">'+esc(q.enunciado)+'</div>'+
+     '<div style="border-left:3px solid var(--ok);background:var(--ok-soft);padding:11px 13px;border-radius:3px;margin-bottom:11px">'+
+     '<b style="font-size:12.5px">Gabarito '+esc(q.gabarito)+'</b><div class="serif" style="font-size:14px;line-height:1.55;margin-top:5px">'+esc(cor.texto||"")+'</div></div>'+
+     '<div class="serif" style="font-size:14px;line-height:1.6;margin-bottom:11px">'+esc(q.explicacao||"")+'</div>'+
+     (q.fundamento&&q.fundamento.citacao?'<div style="border:1px solid var(--line);border-radius:3px;padding:10px 12px;font-size:13px"><div class="mono" style="font-size:10px;color:var(--accent);margin-bottom:4px">'+esc(q.fundamento.norma||"")+' · '+esc(q.fundamento.dispositivo||"")+'</div><i>“'+esc(q.fundamento.citacao)+'”</i></div>':'')+
+     '<button class="btn sec sm" style="margin-top:13px" onclick="fechaModal()">Fechar</button>');
+   };
    const b1=el("button","btn sec sm","Refazer");b1.onclick=()=>{SES={modo:"treino",titulo:"Refazer erro",ids:[q.id],idx:0,respostas:{},marcadas:{},inicio:Date.now(),limite:0,fim:null};salvaSessao();vai("sessao")};
    const b2=el("button","btn sec sm","Estudar o nó");b2.onclick=()=>vai("no",e.no);
    const b3=el("button","btn sec sm","Marcar resolvido");b3.onclick=()=>{e.resolvido=true;salva();checaConquistas();roteia()};
-   bb.appendChild(b1);bb.appendChild(b2);bb.appendChild(b3);w.appendChild(bb);
+   bb.appendChild(b0);bb.appendChild(b1);bb.appendChild(b2);bb.appendChild(b3);w.appendChild(bb);
    c.appendChild(w);
   });
  });
