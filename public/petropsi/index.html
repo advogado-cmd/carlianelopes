@@ -462,7 +462,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="1.9.0", PROVA=new Date(2026,10,29);
+const VERSAO="1.9.1", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq;
@@ -710,6 +710,7 @@ function nosDeHoje(){
   const d=(P.dias||[]).find(x=>x.data===hoje());
   if(d&&d.nos&&d.nos.length){
    const base=d.nos.filter(id=>NOMAP[id]);
+   if(d.fixado)return {nos:base,fase:d.fase,doPlano:true,presos:[],fixado:true};
    // auto-conserto: um nó começado e não terminado nunca some do dia de hoje,
    // mesmo que o plano tenha sido refeito antes desta versão existir.
    const presos=nosEmAndamento().slice(0,2);
@@ -721,7 +722,7 @@ function nosDeHoje(){
 }
 function planoDesatualizado(){
  const h=nosDeHoje();
- if(!h.doPlano)return false;
+ if(!h.doPlano||h.fixado)return false;
  const vivos=proximosNos(5).map(x=>x.no.id);
  return !h.nos.some(id=>vivos.indexOf(id)>=0);
 }
@@ -1091,6 +1092,9 @@ function geraPlano(forcar){
  const p=S.plano;
  if(!forcar&&p&&p.geradoEm&&diasEntre(p.geradoEm,hoje())<7&&p.dias&&p.dias.length)return p;
  if(p&&p.dias&&p.dias.length)S.planoAnterior={geradoEm:p.geradoEm,dias:p.dias,trocadoEm:hoje()};
+ // dias que ela escolheu à mão são intocáveis
+ const fixados={};
+ if(p&&p.dias)p.dias.forEach(d=>{if(d.fixado&&d.data>=hoje())fixados[d.data]=d.nos.slice()});
  const diasRestantes=Math.max(1,diasEntre(hoje(),PROVA.toISOString().slice(0,10)));
  const ordem=NOS.map(n=>({id:n.id,p:prioridade(n.id)})).sort((a,b)=>b.p-a.p).map(x=>x.id);
  const presos=nosEmAndamento().slice(0,3);         // entram no dia de hoje, na frente
@@ -1110,10 +1114,64 @@ function geraPlano(forcar){
    const id=ordem[i%ordem.length];i++;giros++;
    if(ns.indexOf(id)<0)ns.push(id);
   }
-  dias.push({data:iso,nos:ns,fase:revisao?"revisao":"novo",preso:d===0&&presos.length?presos.slice():null});
+  if(fixados[iso])dias.push({data:iso,nos:fixados[iso],fase:revisao?"revisao":"novo",fixado:true});
+  else dias.push({data:iso,nos:ns,fase:revisao?"revisao":"novo",preso:d===0&&presos.length?presos.slice():null});
  }
  S.plano={geradoEm:hoje(),dias:dias};salva();
  return S.plano;
+}
+/* Ela escolhe à mão o que estudar hoje. O dia fica marcado como fixado e
+   nenhuma regeração automática o toca. */
+function defineHoje(ids){
+ const P=geraPlano(false);
+ const i=(P.dias||[]).findIndex(x=>x.data===hoje());
+ const dia={data:hoje(),nos:ids.slice(0,4),fase:(i>=0?P.dias[i].fase:"novo"),fixado:true};
+ if(i>=0)P.dias[i]=dia;else P.dias.unshift(dia);
+ S.plano=P;salva();
+}
+function soltaHoje(){
+ const P=geraPlano(false);
+ const i=(P.dias||[]).findIndex(x=>x.data===hoje());
+ if(i>=0){delete P.dias[i].fixado;S.plano=P;salva();}
+ geraPlano(true);
+}
+function escolheHoje(){
+ const atuais=nosDeHoje().nos.slice();
+ let h='<h3 style="margin:0 0 4px">Escolher o que estudar hoje</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 13px;line-height:1.55">Marque até quatro nós. O dia de hoje fica travado com a sua escolha — nenhuma reordenação automática vai mexer nele.</p>'+
+  '<input id="ehq" placeholder="filtrar por nome do nó" style="width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:4px;background:var(--surface-2);margin-bottom:11px">'+
+  '<div id="ehl" style="max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:7px">';
+ GRUPOS.forEach(g=>{
+  h+='<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin:9px 0 4px">'+esc(g.titulo)+'</div>';
+  (GRPNOS[g.id]||[]).forEach(n=>{
+   const on=atuais.indexOf(n.id)>=0;
+   h+='<label class="ehi" data-t="'+esc((n.titulo||"").toLowerCase())+'" style="display:flex;gap:9px;align-items:flex-start;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:13.5px">'+
+    '<input type="checkbox" value="'+esc(n.id)+'"'+(on?" checked":"")+' style="margin-top:3px">'+
+    '<span>'+esc(n.titulo)+' <span style="color:var(--ink-3);font-size:11.5px">· domínio '+pct(mastery(n.id))+'%</span></span></label>';
+  });
+ });
+ h+='</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:13px">'+
+  '<button class="btn" id="ehok">Usar hoje</button>'+
+  '<button class="btn sec" id="ehauto">Voltar ao automático</button>'+
+  '<button class="btn sec" id="ehx">Cancelar</button></div>'+
+  '<div id="ehc" style="font-size:12px;color:var(--ink-3);margin-top:7px"></div>';
+ modal(h);
+ const lista=()=>[...document.querySelectorAll("#ehl input[type=checkbox]")];
+ const conta=()=>{const n=lista().filter(c=>c.checked).length;
+  $("#ehc").textContent=n+(n===1?" nó marcado":" nós marcados")+(n>4?" — só os quatro primeiros entram":"");};
+ lista().forEach(c=>c.addEventListener("change",conta));conta();
+ $("#ehq").addEventListener("input",e=>{
+  const t=e.target.value.trim().toLowerCase();
+  document.querySelectorAll("#ehl .ehi").forEach(l=>{l.style.display=(!t||l.dataset.t.indexOf(t)>=0)?"":"none"});
+ });
+ $("#ehok").onclick=()=>{
+  const ids=lista().filter(c=>c.checked).map(c=>c.value);
+  if(!ids.length){toast("Marque pelo menos um nó","O dia não pode ficar vazio.","warn");return;}
+  defineHoje(ids);fechaModal();
+  toast("Dia de hoje travado","É isso que você vai estudar hoje. Nada vai reordenar por cima.","ok");roteia();
+ };
+ $("#ehauto").onclick=()=>{soltaHoje();fechaModal();toast("De volta ao automático","O plano volta a escolher o dia por prioridade.","ok");roteia();};
+ $("#ehx").onclick=fechaModal;
 }
 function podeDesfazerPlano(){
  const a=S.planoAnterior;
@@ -1250,17 +1308,18 @@ VIEWS.painel=function(v){
  // o que estudar hoje — vem do plano, para painel e plano nunca se contradizerem
  const H=nosDeHoje();
  const cp=el("div","card");
- cp.appendChild(el("h3",null,"O que estudar hoje <span class='hint'>"+(H.doPlano?(H.fase==="revisao"?"dia de revisão do plano":"vem do seu plano de estudos"):"peso × lacuna × esquecimento")+"</span>"));
+ cp.appendChild(el("h3",null,"O que estudar hoje <span class='hint'>"+(H.fixado?"escolhido por você · travado":(H.doPlano?(H.fase==="revisao"?"dia de revisão do plano":"vem do seu plano de estudos"):"peso × lacuna × esquecimento"))+"</span>"));
  H.nos.forEach((id,i)=>{
   const nn=NOMAP[id];if(!nn)return;
   const b=el("button","raillink");b.style.cssText="align-items:flex-start;padding:10px;border:1px solid var(--line);margin-bottom:7px";
   const clx=S.conteudoLido[id]||{},totx=((CONTMAP[id]||{blocos:[]}).blocos||[]).length;
   const feito=totx?((clx.blocos||[]).length>=totx):(clx.em===hoje());
   const retomando=(H.presos||[]).indexOf(id)>=0;
-  b.innerHTML='<span class="pill '+(feito?"ok":"acc")+'" style="margin-top:1px">'+(feito?"✓":(i+1)+"º")+'</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(nn.titulo)+(retomando?' <span class="pill" style="font-size:9px;vertical-align:middle">retomando</span>':'')+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+(retomando?"Você começou este nó e ainda não terminou — ele fica aqui até você fechar.":esc(porqueEstudar(id)))+'</span></span>';
+  b.innerHTML='<span class="pill '+(feito?"ok":"acc")+'" style="margin-top:1px">'+(feito?"✓":(i+1)+"º")+'</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(nn.titulo)+(retomando?' <span class="pill" style="font-size:9px;vertical-align:middle">retomando</span>':'')+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+(retomando?"Você começou este nó e ainda não terminou — ele fica aqui até você fechar.":(H.fixado?"Você escolheu este nó para hoje.":esc(porqueEstudar(id))))+'</span></span>';
   b.onclick=()=>vai(CONTMAP[id]?"conteudo":"no",id);cp.appendChild(b);
  });
  const rod=el("div");rod.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px";
+ const bes=el("button","btn sec sm","Escolher o que estudar hoje");bes.onclick=escolheHoje;rod.appendChild(bes);
  if(H.doPlano){
   const bp2=el("button","btn sec sm","Ver a semana no plano");bp2.onclick=()=>vai("plano");rod.appendChild(bp2);
  }
@@ -1370,6 +1429,7 @@ VIEWS.plano=function(v){
  const br=el("button","btn sec sm","Refazer agora");
  br.onclick=()=>{refazPlano()};
  cab.appendChild(br);
+ const bh=el("button","btn sec sm","Escolher o que estudar hoje");bh.onclick=escolheHoje;cab.appendChild(bh);
  if(podeDesfazerPlano()){
   const bd=el("button","btn sec sm","Voltar ao plano anterior");
   bd.onclick=()=>{if(desfazPlano()){toast("Plano restaurado","Voltei ao plano que estava valendo antes.","ok");roteia()}};
@@ -1403,7 +1463,7 @@ VIEWS.plano=function(v){
    const eh=d.data===hoje();
    const row=el("div","dia"+(eh?" hoje":"")+(d.data<hoje()?" passado":""));
    const dt=new Date(d.data+"T12:00:00");
-   row.appendChild(el("div","dt",(eh?"<b>hoje</b>":DIAS[dt.getDay()])+"<br>"+d.data.split("-").reverse().slice(0,2).join("/")));
+   row.appendChild(el("div","dt",(eh?"<b>hoje</b>":DIAS[dt.getDay()])+"<br>"+d.data.split("-").reverse().slice(0,2).join("/")+(d.fixado?'<br><span style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">travado</span>':'')));
    const ns=el("div","ns");
    d.nos.forEach(id=>{
     const nn=NOMAP[id];if(!nn)return;
@@ -2740,7 +2800,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (1.9.0):</b> refazer o plano de estudos não tira mais do dia de hoje o nó que você começou e ainda não terminou — ele fica marcado como “retomando” até você fechar. E, se o plano mudar e você preferir o anterior, aparece o botão “Voltar ao plano anterior”.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (1.9.1):</b> você pode escolher à mão o que estudar hoje — o dia fica travado e nenhuma reordenação automática mexe nele. Refazer o plano também não tira mais do dia o nó que você começou e não terminou (ele fica marcado como “retomando”), e existe o botão “Voltar ao plano anterior”.</div>';
  v.appendChild(c4);
 };
 
