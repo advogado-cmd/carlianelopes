@@ -605,8 +605,54 @@ table.t tr:last-child td{border-bottom:0}
 .toast.xp{border-left-color:var(--xp)}.toast.ok{border-left-color:var(--ok)}
 .toast b{display:block;font-size:13.5px;margin-bottom:2px}
 .toast small{color:var(--ink-3);font-size:11.5px}
+.toast .cnt{position:absolute;top:8px;right:11px;font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;color:var(--accent)}
+.toast{position:relative}
 @keyframes tin{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 @media(max-width:960px){#toasts{left:12px;right:12px;bottom:70px;max-width:none}}
+#crono{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:94;display:none;align-items:center;gap:12px;
+ background:var(--acao);color:#fff;border-radius:99px;padding:8px 10px 8px 16px;box-shadow:0 8px 26px rgba(58,56,160,.36);max-width:calc(100vw - 24px)}
+#crono.on{display:flex}
+#crono.pausa{background:var(--ok)}
+#crono .pt{width:9px;height:9px;border-radius:50%;background:#fff;flex-shrink:0;animation:pulsa 1.6s ease-in-out infinite}
+@keyframes pulsa{0%,100%{opacity:1}50%{opacity:.25}}
+#crono .tx{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+#crono .tx b{font-size:15px;font-variant-numeric:tabular-nums}
+#crono .tx small{font-size:10.5px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#crono .tx small.fs{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.06em;opacity:.82}
+#crono .btn{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.36);color:#fff!important}
+@media(max-width:960px){#crono{bottom:74px}}
+/* mapa de calor da dificuldade */
+.hmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:4px}
+.hmap button{aspect-ratio:1;border-radius:5px;border:1px solid var(--line);cursor:pointer;font-family:"JetBrains Mono",monospace;font-size:8.5px;color:var(--ink-3);background:var(--surface-3);padding:0;display:flex;align-items:center;justify-content:center}
+.hmap button.d1{background:#CDE9DA;border-color:#1F6B4C;color:#1F6B4C}
+.hmap button.d2{background:#DCEBC8;border-color:#4A7A25;color:#3C641C}
+.hmap button.d3{background:#FBE6C4;border-color:#8A5408;color:#8A5408}
+.hmap button.d4{background:#FBD8C9;border-color:#9E3E24;color:#9E3E24}
+.hmap button.d5{background:#FAD9D1;border-color:#A32E1E;color:#A32E1E}
+.hmap button:hover{outline:2px solid var(--accent);outline-offset:1px}
+:root[data-theme="dark"] .hmap button.d1,:root:not([data-theme="light"]) .hmap button.d1{background:#11301F;border-color:#5FCE9A;color:#5FCE9A}
+:root[data-theme="dark"] .hmap button.d2,:root:not([data-theme="light"]) .hmap button.d2{background:#17300F;border-color:#8CD182;color:#8CD182}
+:root[data-theme="dark"] .hmap button.d3,:root:not([data-theme="light"]) .hmap button.d3{background:#3A2A11;border-color:#EDB65E;color:#EDB65E}
+:root[data-theme="dark"] .hmap button.d4,:root:not([data-theme="light"]) .hmap button.d4{background:#3E1D13;border-color:#F09877;color:#F09877}
+:root[data-theme="dark"] .hmap button.d5,:root:not([data-theme="light"]) .hmap button.d5{background:#3A1B15;border-color:#F08C77;color:#F08C77}
+/* barras horizontais comparativas */
+.barpar{display:grid;grid-template-columns:170px 1fr 74px;gap:11px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.barpar .nm{font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.25}
+.barpar .tr{position:relative;height:26px}
+.barpar .tr i{position:absolute;left:0;height:11px;border-radius:3px;display:block}
+.barpar .tr i.a{top:0;background:var(--tom)}
+.barpar .tr i.b{top:14px;background:var(--line-2);opacity:.75}
+.barpar .vl{font-family:"JetBrains Mono",monospace;font-size:11px;text-align:right;color:var(--ink-3);line-height:1.3}
+.legpar{display:flex;gap:14px;font-size:11.5px;color:var(--ink-3);margin-bottom:9px;flex-wrap:wrap}
+.legpar span{display:flex;align-items:center;gap:6px}
+.legpar i{width:14px;height:8px;border-radius:2px;display:block}
+/* grade semanal */
+.gsem{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.gsem .dd{border:1px solid var(--line);border-radius:var(--radius-p);padding:9px 6px;text-align:center;background:var(--surface-2)}
+.gsem .dd b{display:block;font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.gsem .dd input{width:100%;padding:6px 4px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface);text-align:center;font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600}
+.gsem .dd small{display:block;font-size:10px;color:var(--ink-3);margin-top:4px}
+@media(max-width:640px){.gsem{grid-template-columns:repeat(4,1fr)}}
 #iabtn{position:fixed;right:18px;bottom:18px;z-index:96;width:56px;height:56px;border-radius:50%;border:2px solid var(--surface);background:var(--acao);color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(58,56,160,.38);display:flex;align-items:center;justify-content:center}
 #iabtn:hover{background:var(--acao-2);transform:scale(1.06)}
 #iabtn svg{width:26px;height:26px}
@@ -797,6 +843,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 <div id="toasts" aria-live="polite"></div>
 <div class="modal" id="modal"><div class="mb" id="modalBody"></div></div>
 <div id="areaImpressao" aria-hidden="true"></div>
+<div id="crono" role="status" aria-live="polite"><span class="pt"></span><div class="tx"><b id="cronoT" class="mono">00:00:00</b><small id="cronoN"></small><small id="cronoF" class="fs"></small></div><button class="btn sec sm" id="cronoP">Parar</button></div>
 <button id="iabtn" type="button" aria-label="Abrir o assistente" title="Perguntar ao assistente"></button>
 <div id="iapane" role="dialog" aria-label="Assistente">
  <div class="iah"><span class="ii"></span><div><b>Assistente do PETROPSI</b><small>busca no material verificado · cita a fonte · não inventa</small></div><button class="btn sec sm" id="iax">Fechar</button></div>
@@ -811,7 +858,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="2.2.0", PROVA=new Date(2026,10,29);
+const VERSAO="2.3.0", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq, ANUL=(CORPUS.anuladas||[]);
@@ -888,7 +935,23 @@ window.addEventListener("error",function(ev){
 window.addEventListener("unhandledrejection",function(ev){
  relatarErro(ev.reason||{message:"promessa rejeitada"},"promessa");
 });
-function toast(titulo,sub,tipo){const t=el("div","toast "+(tipo||""),"<b>"+esc(titulo)+"</b>"+(sub?"<small>"+esc(sub)+"</small>":""));$("#toasts").appendChild(t);setTimeout(()=>{t.style.opacity="0";t.style.transition="opacity .4s";setTimeout(()=>t.remove(),420)},4200);}
+// no máximo três avisos na tela, e repetição vira contador em vez de pilha —
+// senão marcar dez blocos seguidos cobre a página inteira.
+function toast(titulo,sub,tipo){
+ const cx=$("#toasts");
+ const ult=cx.lastElementChild;
+ if(ult&&ult.dataset.t===titulo&&Date.now()-(+ult.dataset.em||0)<4000){
+  const n=(+ult.dataset.n||1)+1;
+  ult.dataset.n=n;ult.dataset.em=Date.now();
+  ult.innerHTML="<b>"+esc(titulo)+"</b>"+(sub?"<small>"+esc(sub)+"</small>":"")+'<span class="cnt">'+n+"×</span>";
+  return;
+ }
+ const t=el("div","toast "+(tipo||""),"<b>"+esc(titulo)+"</b>"+(sub?"<small>"+esc(sub)+"</small>":""));
+ t.dataset.t=titulo;t.dataset.em=Date.now();t.dataset.n=1;
+ cx.appendChild(t);
+ while(cx.children.length>3)cx.firstElementChild.remove();
+ setTimeout(()=>{t.style.opacity="0";t.style.transition="opacity .4s";setTimeout(()=>t.remove(),420)},4200);
+}
 /* ---- corpos de impressão prontos ---- */
 function corpoBloco(c,b,i){
  const rot={texto:"texto",literal:"transcrição literal",tabela:"tabela",caso:"caso Transpetro",alerta:"atenção"}[b.tipo]||b.tipo||"texto";
@@ -971,10 +1034,11 @@ $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")fechaModal();}
 const CHAVE="petropsi.estado.v1";
 const ESTADO_INICIAL=()=>({versaoEstado:1,criadoEm:hoje(),
  perfil:{horasSemana:12},
- config:{tema:"auto",voz:"",velocidade:1,metaDiariaCartoes:40,metaDiariaQuestoes:20},
+ config:{tema:"auto",voz:"",velocidade:1,metaDiariaCartoes:40,metaDiariaQuestoes:20,pomoFoco:25,pomoPausa:5,pomoLonga:15},
  mastery:{},questoes:{},flashcards:{},simulados:[],cadernoErros:[],sessoes:[],notas:{},discursivas:[],ultimoLocal:null,plano:null,planoAnterior:null,
  game:{xp:0,streak:0,melhorStreak:0,ultimoDia:"",escudos:0,conquistas:{},missoes:{dia:"",itens:[]}},
- conteudoLido:{},audioOuvido:{},checkpoint:{},pptVisto:{},migracoes:{}});
+ conteudoLido:{},audioOuvido:{},checkpoint:{},pptVisto:{},migracoes:{},
+ revisoesConteudo:{},tempo:[],crono:null,dificuldade:{}});
 let S=ESTADO_INICIAL();
 function pesoEstado(d){
  if(!d||typeof d!=="object")return -1;
@@ -1000,10 +1064,10 @@ function migra(d){const base=ESTADO_INICIAL();
  if(!d||typeof d!=="object")return base;
  // fusão profunda conservadora: nunca descarta dado desconhecido
  const out=Object.assign({},base,d);
- for(const k of ["perfil","config","game","mastery","questoes","flashcards","conteudoLido","audioOuvido","checkpoint","notas","pptVisto","migracoes"])
+ for(const k of ["perfil","config","game","mastery","questoes","flashcards","conteudoLido","audioOuvido","checkpoint","notas","pptVisto","migracoes","revisoesConteudo","dificuldade"])
    out[k]=Object.assign({},base[k],d[k]||{});
  out.game.missoes=Object.assign({dia:"",itens:[]},(d.game&&d.game.missoes)||{});
- for(const k of ["simulados","cadernoErros","sessoes","discursivas"]) out[k]=Array.isArray(d[k])?d[k]:[];
+ for(const k of ["simulados","cadernoErros","sessoes","discursivas","tempo"]) out[k]=Array.isArray(d[k])?d[k]:[];
  out.versaoEstado=1; return out;
 }
 const CHAVE_BACKUP="petropsi.estado.backup";
@@ -1102,6 +1166,10 @@ function prioridade(noId){
   const dias=ur?diasEntre(ur,hoje()):60;
   const dec=Math.min(1.5,1+dias/21);
   let p=(n.peso||1)*(1-m)*dec*(1+erroRecente(noId));
+  // o que ela mesma marcou como difícil sobe; o que marcou como fácil desce um pouco.
+  // É um segundo sinal, não o principal: pesa menos que desempenho medido.
+  const dif=dificuldade(noId);
+  if(dif)p*=(0.86+0.09*dif);
   const faltam=diasEntre(hoje(),PROVA.toISOString().slice(0,10));
   if(faltam<=30&&m<0.5)p*=2.2;
   if(dias>21)p*=1.3;
@@ -1258,6 +1326,8 @@ function checaConquistas(){
    NAVEGAÇÃO
    ========================================================= */
 const IC={
+ revisao:'<path d="M21 12a9 9 0 11-2.6-6.4"/><path d="M21 3v6h-6"/>',
+ crono:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
  diagrama:'<path d="M3 4h7v6H3z"/><path d="M14 14h7v6h-7z"/><path d="M6.5 10v4h11"/>',
  anulada:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
  apresentacao:'<path d="M3 4h18v11H3z"/><path d="M12 15v5M8 20h8M12 4V2"/>',
@@ -1296,7 +1366,7 @@ const IC={
 };
 const MENU=[
  {g:"Início",itens:[{id:"painel",nm:"Painel",ic:"painel"}]},
- {g:"Estudar",itens:[{id:"trilha",nm:"Edital e trilha",ic:"trilha"},{id:"plano",nm:"Plano de estudos",ic:"tempo"},{id:"conteudo",nm:"Conteúdo",ic:"conteudo"},{id:"nr",nm:"Normas Regulamentadoras",ic:"nr"},{id:"vade",nm:"Vade-mécum",ic:"vade"},{id:"mapas",nm:"Mapas mentais",ic:"mapa"},{id:"diagramas",nm:"Diagramas",ic:"diagrama"},{id:"audio",nm:"Áudio",ic:"audio"}]},
+ {g:"Estudar",itens:[{id:"trilha",nm:"Edital e trilha",ic:"trilha"},{id:"plano",nm:"Plano de estudos",ic:"tempo"},{id:"revisoes",nm:"Revisões de conteúdo",ic:"revisao"},{id:"rotina",nm:"Minha rotina",ic:"crono"},{id:"conteudo",nm:"Conteúdo",ic:"conteudo"},{id:"nr",nm:"Normas Regulamentadoras",ic:"nr"},{id:"vade",nm:"Vade-mécum",ic:"vade"},{id:"mapas",nm:"Mapas mentais",ic:"mapa"},{id:"diagramas",nm:"Diagramas",ic:"diagrama"},{id:"audio",nm:"Áudio",ic:"audio"}]},
  {g:"Treinar",itens:[{id:"simulados",nm:"Simulados",ic:"simulado"},{id:"provas",nm:"Provas comentadas",ic:"prova"},{id:"anuladas",nm:"Questões anuladas",ic:"anulada"},{id:"banco",nm:"Banco de questões",ic:"banco"},{id:"cartoes",nm:"Flashcards",ic:"cartao"},{id:"discursivas",nm:"Discursivas e redação",ic:"pena"}]},
  {g:"Acompanhar",itens:[{id:"desempenho",nm:"Desempenho",ic:"desemp"},{id:"conquistas",nm:"Conquistas",ic:"conq"},{id:"erros",nm:"Revisar meus erros",ic:"erros"},{id:"notas",nm:"Minhas anotações",ic:"nota"}]},
  {g:"Apoiar",itens:[{id:"tutorial",nm:"Como usar o sistema",ic:"tutorial"},{id:"tutor",nm:"Tutor e FAQ",ic:"tutor"},{id:"config",nm:"Configurações",ic:"config"}]}
@@ -1453,9 +1523,12 @@ function metaDiaria(){
  const blocosFalta=Math.max(0,blocosTot-blocosLidos);
  const qsInedita=QS.filter(q=>!((S.questoes[q.id]||{}).tentativas||[]).length).length;
  const cartoesHoje=cartoesVencidos().length;
- const alvoBlocos=diasRestantes>RESERVA_REVISAO?Math.ceil(blocosFalta/diasNovo):0;
- const alvoQuestoes=Math.max(10,Math.ceil(qsInedita/diasNovo));
- const alvoCartoes=Math.max(cartoesHoje,0);
+ // a meta cabe no dia real: um domingo de zero minuto não cobra nada,
+ // um sábado longo puxa mais. O fator é o minuto do dia sobre o dia médio da semana.
+ const f=(typeof fatorDoDia==="function")?fatorDoDia(hoje()):1;
+ const alvoBlocos=diasRestantes>RESERVA_REVISAO?Math.round((blocosFalta/diasNovo)*f):0;
+ const alvoQuestoes=f<=0?0:Math.max(5,Math.round((qsInedita/diasNovo)*f));
+ const alvoCartoes=f<=0?0:Math.max(cartoesHoje,0);
  const feitoBlocos=contaHoje("conteudo"),feitoQuestoes=contaHoje("questoes"),feitoCartoes=contaHoje("cartoes");
  const total=alvoBlocos+alvoQuestoes+Math.min(alvoCartoes,S.config.metaDiariaCartoes||40);
  const feito=Math.min(feitoBlocos,alvoBlocos||feitoBlocos)+Math.min(feitoQuestoes,alvoQuestoes)+Math.min(feitoCartoes,alvoCartoes||feitoCartoes);
@@ -1463,6 +1536,7 @@ function metaDiaria(){
  const ult7=S.sessoes.filter(x=>diasEntre(x.data,hoje())<=7);
  const minPorDia=ult7.length?Math.round(ult7.reduce((a,x)=>a+x.minutos,0)/7):0;
  return {diasRestantes,diasNovo,blocosTot,blocosLidos,blocosFalta,qsInedita,
+  fatorDia:f,minutosHoje:(typeof minutosDoDia==="function")?minutosDoDia(hoje()):null,
   blocos:{alvo:alvoBlocos,feito:feitoBlocos},
   questoes:{alvo:alvoQuestoes,feito:feitoQuestoes},
   cartoes:{alvo:Math.min(alvoCartoes,S.config.metaDiariaCartoes||40),feito:feitoCartoes},
@@ -1544,10 +1618,14 @@ function situacaoNo(noId,data){
 const RESERVA_REVISAO_=RESERVA_REVISAO;
 function planoFimISO(){return PROVA.toISOString().slice(0,10)}
 function protocoloDoDia(iso,diasNovo,d0){
- const dt=new Date(iso+"T12:00:00");
  const revisao=diasEntre(hoje(),iso)>=diasNovo;
- const dow=dt.getDay();
- return {fase:revisao?"revisao":"novo",porDia:revisao?3:(dow===0?1:2)};
+ // quantos nós cabem no dia sai do tempo declarado, não de uma regra fixa.
+ // ~45 min por nó em conteúdo novo; ~25 min por nó em dia de revisão.
+ const min=(typeof minutosDoDia==="function")?minutosDoDia(iso):120;
+ const custo=revisao?25:45;
+ let porDia=Math.floor(min/custo);
+ porDia=Math.max(min>=20?1:0,Math.min(revisao?4:3,porDia));
+ return {fase:revisao?"revisao":"novo",porDia:porDia,minutos:min};
 }
 // Nós que ela começou e ainda não terminou. Nunca somem do dia de hoje.
 function nosEmAndamento(){
@@ -1568,13 +1646,14 @@ function nosEmAndamento(){
 function novoDia(iso,ordem,cursor,diasNovo,presos){
  const pr=protocoloDoDia(iso,diasNovo);
  const ns=[];
+ if(pr.porDia<=0&&!(presos&&presos.length))return {data:iso,nos:[],fase:pr.fase,extras:[],cumpridos:[],folga:true};
  if(presos&&presos.length)presos.forEach(id=>{if(ns.indexOf(id)<0&&ns.length<pr.porDia+presos.length)ns.push(id)});
  let giros=0;
  while(ns.length<pr.porDia&&giros<ordem.length*2){
   const id=ordem[cursor.i%ordem.length];cursor.i++;giros++;
   if(ns.indexOf(id)<0)ns.push(id);
  }
- return {data:iso,nos:ns,fase:pr.fase,extras:[],cumpridos:[]};
+ return {data:iso,nos:ns,fase:pr.fase,extras:[],cumpridos:[],minutos:pr.minutos};
 }
 // Reconstrói os dias JÁ PASSADOS a partir do diário, para que ela veja o que fez em cada um.
 function diasPassadosDoDiario(desde){
@@ -1816,6 +1895,16 @@ VIEWS.painel=function(v){
  hd.innerHTML=ic("alvo",17)+'<h3>Meta de hoje</h3>'+
   '<span class="vd '+(M.cumprida?"ok":"no")+'">'+(M.cumprida?"cumprida":(M.feito?"em andamento":"ainda não começou"))+'</span>';
  cm0.appendChild(hd);
+ const cronoBar=el("div");cronoBar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:9px 17px;border-bottom:1px solid var(--line);background:var(--surface-2)";
+ const bcr=el("button","btn sm",ic("crono",13)+(cronoAtivo()?"Parar o cronômetro":"Ligar o cronômetro"));
+ bcr.onclick=()=>cronoAtivo()?paraCrono():abreCrono();
+ cronoBar.appendChild(bcr);
+ cronoBar.appendChild(el("span",null,'<span style="font-size:12.5px;color:var(--ink-2)">'+
+  (dispoDefinida()?('Hoje você tem <b>'+hhmm(M.minutosHoje)+'</b> na sua rotina'):'Você ainda não declarou a sua rotina — a meta está usando um dia genérico')+
+  ' · já registrou <b>'+hhmm(totalMinutos(1))+'</b> hoje</span>'));
+ const brot2=el("button","btn sec sm",dispoDefinida()?"Ajustar a rotina":"Declarar a minha rotina");
+ brot2.onclick=()=>vai("rotina");cronoBar.appendChild(brot2);
+ cm0.appendChild(cronoBar);
  const mg=el("div","mg");
  [["Conteúdo","bloco(s)",M.blocos,"conteudo",()=>vai("plano")],
   ["Questões","questão(ões)",M.questoes,"banco",()=>iniciaSessao({modo:"treino",n:Math.max(1,M.questoes.alvo-M.questoes.feito),titulo:"Meta do dia"})],
@@ -1861,6 +1950,17 @@ VIEWS.painel=function(v){
   v.appendChild(ce3);
  }
 
+ // ---- revisões de conteúdo vencidas ----
+ const rv=revisoesVencidas();
+ if(rv.length){
+  const cr2=el("div","card tom-nr");cr2.style.marginBottom="13px";
+  cr2.appendChild(el("h3",null,ic("revisao",15)+"Revisão de conteúdo vencida <span class='hint'>"+rv.length+" bloco(s)</span>"));
+  const nomes=[...new Set(rv.slice(0,4).map(r=>(NOMAP[r.no]||{}).titulo||r.no))];
+  cr2.appendChild(el("div",null,'<div style="font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-bottom:11px">'+
+   esc(nomes.join(" · "))+(rv.length>4?" e mais "+(rv.length-4):"")+'. Reler o bloco inteiro é o que segura a estrutura da norma; o cartão sozinho não faz isso.</div>'));
+  const bq4=el("button","btn","Reler agora");bq4.onclick=()=>vai("revisoes");cr2.appendChild(bq4);
+  v.appendChild(cr2);
+ }
  // ---- retomar de onde parou ----
  const ul=S.ultimoLocal;
  if(ul&&ul.arg&&(ul.rota==="conteudo"||ul.rota==="vade"||ul.rota==="no")){
@@ -2039,6 +2139,8 @@ VIEWS.plano=function(v){
  br.onclick=()=>{refazPlano()};
  cab.appendChild(br);
  const bh=el("button","btn sec sm","Acrescentar assuntos a hoje");bh.onclick=escolheHoje;cab.appendChild(bh);
+ const bics=el("button","btn sec sm",ic("tempo",13)+"Levar para o calendário");bics.onclick=abreExportarICS;cab.appendChild(bics);
+ const brot=el("button","btn sec sm","Minha rotina");brot.onclick=()=>vai("rotina");cab.appendChild(brot);
  if(podeDesfazerPlano()){
   const bd=el("button","btn sec sm","Voltar ao plano anterior");
   bd.onclick=()=>{if(desfazPlano()){toast("Plano restaurado","Voltei ao plano que estava valendo antes.","ok");roteia()}};
@@ -2125,8 +2227,10 @@ VIEWS.plano=function(v){
    };
    (d.nos||[]).forEach(id=>marca(id,"obrig"));
    (d.extras||[]).forEach(id=>{if((d.nos||[]).indexOf(id)<0)marca(id,"extra")});
+   if(d.folga||!(d.nos||[]).length)ns.appendChild(el("span","pill","dia de folga na sua rotina"));
    if(d.fase==="revisao")ns.appendChild(el("span","pill warn","revisão"));
    if((d.extras||[]).length)ns.appendChild(el("span","pill","+ extras seus"));
+   if(d.minutos)ns.appendChild(el("span","pill",hhmm(d.minutos)+" disponíveis"));
    row.appendChild(ns);
    const acao=el("div");acao.style.cssText="display:flex;gap:5px";
    const brr=el("button","btn sec sm","Refazer só este dia");
@@ -2301,7 +2405,8 @@ function rolaAteBloco(i){
 function marcaBloco(no,i,total){
  const cl=S.conteudoLido[no]||{blocos:[]};
  if(cl.blocos.indexOf(i)<0){cl.blocos.push(i);cl.em=hoje();cl.dias=cl.dias||{};cl.dias[hoje()]=(cl.dias[hoje()]||0)+1;S.conteudoLido[no]=cl;
-  ganhaXp(XP.bloco);registraAtividade(6);calcMastery(no);checaConquistas();
+  agendaBloco(no,i);
+  ganhaXp(XP.bloco);registraAtividade(6);registraTempo(no,"conteudo",6);calcMastery(no);checaConquistas();
   toast("Bloco concluído","+"+XP.bloco+" XP"+(cl.blocos.length>=total?" · módulo completo":""),"xp");}
  salva();
 }
@@ -3139,9 +3244,11 @@ VIEWS.desempenho=function(v){
  const tr=totalRespondidas();let ac=0;Object.values(S.questoes).forEach(q=>(q.tentativas||[]).forEach(t=>{if(t.correta)ac++}));
  g.appendChild(cartaoStat("Acerto geral",tr?Math.round(ac/tr*100)+"%":"—",tr+" questões respondidas"));
  g.appendChild(cartaoStat("Nota projetada",num(np.total),"de 70"));
- g.appendChild(cartaoStat("Horas estudadas",(S.sessoes.reduce((a,s)=>a+s.minutos,0)/60).toFixed(1)+"h",S.sessoes.length+" dias ativos"));
+ g.appendChild(cartaoStat("Horas cronometradas",hhmm(totalMinutos()),totalMinutos(7)?hhmm(totalMinutos(7))+" nos últimos 7 dias":"ligue o cronômetro"));
  g.appendChild(cartaoStat("Melhor sequência",S.game.melhorStreak,"dias seguidos"));
  v.appendChild(g);
+ v.appendChild(blocoTempo());
+ v.appendChild(blocoTipos());
 
  const c1=el("div","card");c1.style.marginBottom="13px";
  c1.appendChild(el("h3",null,"Evolução da nota projetada <span class='hint'>Fase 1, de 50</span>"));
@@ -3640,6 +3747,813 @@ function perguntaIA(){
  IACHAT.push(msg);
  pintaIA();
 }
+/* =========================================================
+   REVISÃO PROGRAMADA DO CONTEÚDO
+   O SM-2 dos cartões testa fato isolado. O que a Cesgranrio cobra
+   em norma é ESTRUTURA — a redação do item, quem faz o quê, o prazo.
+   Isso se mantém relendo o bloco inteiro em intervalo crescente.
+   Fila própria, separada da dos flashcards.
+   ========================================================= */
+const ESCADA=[1,7,30,60,90];
+function chaveBloco(no,i){return no+"|"+i}
+function revisoes(){S.revisoesConteudo=S.revisoesConteudo||{};return S.revisoesConteudo}
+function agendaBloco(no,i){
+ const R=revisoes(),k=chaveBloco(no,i);
+ if(R[k])return;
+ R[k]={no:no,bloco:i,lidoEm:hoje(),etapa:0,proxima:maisDias(hoje(),ESCADA[0]),historico:[]};
+ salva();
+}
+function maisDias(iso,n){
+ const d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+n);
+ return d.toISOString().slice(0,10);
+}
+function revisoesVencidas(no){
+ const R=revisoes(),hj=hoje(),out=[];
+ Object.keys(R).forEach(k=>{
+  const r=R[k];
+  if(!r||r.encerrada)return;
+  if(no&&r.no!==no)return;
+  if(!NOMAP[r.no]||!CONTMAP[r.no])return;
+  if((CONTMAP[r.no].blocos||[]).length<=r.bloco)return;
+  if(r.proxima<=hj)out.push(r);
+ });
+ // as mais atrasadas primeiro; entre iguais, o nó de maior peso na prova
+ out.sort((a,b)=>(a.proxima<b.proxima?-1:a.proxima>b.proxima?1:0)||(prioridade(b.no)-prioridade(a.no)));
+ return out;
+}
+function proximasRevisoes(dias){
+ const R=revisoes(),lim=maisDias(hoje(),dias||7),out=[];
+ Object.keys(R).forEach(k=>{const r=R[k];
+  if(r&&!r.encerrada&&r.proxima>hoje()&&r.proxima<=lim)out.push(r)});
+ out.sort((a,b)=>a.proxima<b.proxima?-1:1);
+ return out;
+}
+// "lembrei" avança na escada; "não lembrava" volta ao começo — é o mesmo
+// princípio do SM-2, mas para bloco de texto em vez de cartão.
+function revisaBloco(no,i,lembrou){
+ const R=revisoes(),k=chaveBloco(no,i),r=R[k];
+ if(!r)return;
+ r.historico=r.historico||[];
+ r.historico.push({em:hoje(),lembrou:!!lembrou});
+ if(lembrou){
+  r.etapa=Math.min(ESCADA.length-1,(r.etapa||0)+1);
+  if(r.etapa>=ESCADA.length-1&&r.historico.filter(h=>h.lembrou).length>=ESCADA.length){r.encerrada=true}
+ }else{
+  r.etapa=0;
+ }
+ r.proxima=maisDias(hoje(),ESCADA[r.etapa]);
+ r.ultima=hoje();
+ registraTempo(no,"revisao",2);
+ ganhaXp(lembrou?XP.cartaoBom+2:XP.cartao);
+ registraAtividade(2);
+ salva();
+}
+function estatRevisoes(){
+ const R=revisoes();const ks=Object.keys(R);
+ let ativas=0,encerradas=0,maduras=0;
+ ks.forEach(k=>{const r=R[k];if(!r)return;if(r.encerrada){encerradas++;return}ativas++;if((r.etapa||0)>=3)maduras++;});
+ return {total:ks.length,ativas,encerradas,maduras,vencidas:revisoesVencidas().length};
+}
+
+/* =========================================================
+   CRONÔMETRO — Pomodoro e registro de tempo por nó e atividade
+   ========================================================= */
+const TIPOS_ESTUDO=[["conteudo","Leitura de conteúdo"],["questoes","Questões"],["cartoes","Flashcards"],
+                    ["revisao","Revisão"],["simulado","Simulado"],["audio","Áudio"],["outro","Outro"]];
+function registraTempo(no,tipo,minutos){
+ if(!minutos||minutos<=0)return;
+ S.tempo=S.tempo||[];
+ const d=hoje();
+ const ex=S.tempo.find(x=>x.data===d&&x.no===(no||"")&&x.tipo===tipo);
+ if(ex)ex.minutos+=minutos; else S.tempo.push({data:d,no:no||"",tipo:tipo,minutos:minutos});
+ if(S.tempo.length>4000)S.tempo=S.tempo.slice(-3000);
+ salva();
+}
+function minutosPorNo(desdeDias){
+ const lim=desdeDias?maisDias(hoje(),-desdeDias):null;
+ const m={};
+ (S.tempo||[]).forEach(x=>{if(lim&&x.data<lim)return;if(!x.no)return;m[x.no]=(m[x.no]||0)+x.minutos});
+ return m;
+}
+function minutosPorGrupo(desdeDias){
+ const pn=minutosPorNo(desdeDias),g={};
+ GRUPOS.forEach(x=>g[x.id]=0);
+ Object.keys(pn).forEach(id=>{const n=NOMAP[id];if(n&&g[n.grupo]!==undefined)g[n.grupo]+=pn[id]});
+ return g;
+}
+function minutosPorTipo(desdeDias){
+ const lim=desdeDias?maisDias(hoje(),-desdeDias):null;
+ const m={};
+ (S.tempo||[]).forEach(x=>{if(lim&&x.data<lim)return;m[x.tipo]=(m[x.tipo]||0)+x.minutos});
+ return m;
+}
+function totalMinutos(desdeDias){
+ const lim=desdeDias?maisDias(hoje(),-desdeDias):null;
+ let t=0;(S.tempo||[]).forEach(x=>{if(lim&&x.data<lim)return;t+=x.minutos});
+ return t;
+}
+/* estado do cronômetro; sobrevive a fechar a aba */
+function cronoAtivo(){return S.crono&&S.crono.inicio?S.crono:null}
+function iniciaCrono(no,tipo,pomodoro){
+ if(cronoAtivo())paraCrono(true);
+ S.crono={inicio:Date.now(),no:no||"",tipo:tipo||"conteudo",pomodoro:!!pomodoro,
+          fase:"foco",ciclos:0,fimFase:Date.now()+(S.config.pomoFoco||25)*60000};
+ salva();pintaCrono();
+ toast("Cronômetro ligado",(no?((NOMAP[no]||{}).titulo||no):"sem nó")+" · "+(TIPOS_ESTUDO.find(t=>t[0]===tipo)||["","estudo"])[1],"ok");
+}
+function paraCrono(silencioso){
+ const c=cronoAtivo();if(!c)return 0;
+ const min=Math.round((Date.now()-c.inicio)/60000);
+ if(min>=1){registraTempo(c.no,c.tipo,min);registraAtividade(min);ganhaXp(Math.min(40,Math.round(min/5)*2));}
+ S.crono=null;salva();pintaCrono();
+ if(!silencioso)toast("Cronômetro parado",min>=1?(min+" minuto(s) registrados"+(c.no?" em "+((NOMAP[c.no]||{}).titulo||c.no):"")):"menos de um minuto — nada foi registrado","ok");
+ return min;
+}
+// reconciliação: se a aba foi fechada, o tempo até o fechamento vale,
+// mas não vale a madrugada inteira — corta em 3 horas.
+function reconciliaCrono(){
+ const c=cronoAtivo();if(!c)return;
+ const decorrido=(Date.now()-c.inicio)/60000;
+ if(decorrido>180){
+  const min=180;
+  registraTempo(c.no,c.tipo,min);registraAtividade(min);
+  S.crono=null;salva();
+  setTimeout(()=>toast("Cronômetro fechado sozinho","Ficou ligado mais de 3 horas. Registrei 3 horas e parei — corrija em Desempenho se não foi isso.",""),1400);
+ }
+}
+let cronoTick=null;
+function pintaCrono(){
+ const box=$("#crono");if(!box)return;
+ const c=cronoAtivo();
+ if(!c){box.classList.remove("on");if(cronoTick){clearInterval(cronoTick);cronoTick=null}return}
+ box.classList.add("on");
+ const upd=()=>{
+  const cc=cronoAtivo();if(!cc){pintaCrono();return}
+  const dec=Math.floor((Date.now()-cc.inicio)/1000);
+  $("#cronoT").textContent=hhmmss(dec);
+  const nome=cc.no?((NOMAP[cc.no]||{}).titulo||cc.no):"sem nó definido";
+  $("#cronoN").textContent=nome.length>34?nome.slice(0,32)+"…":nome;
+  const tipo=(TIPOS_ESTUDO.find(t=>t[0]===cc.tipo)||["","estudo"])[1];
+  if(cc.pomodoro){
+   const rest=Math.max(0,Math.round((cc.fimFase-Date.now())/1000));
+   $("#cronoF").textContent=(cc.fase==="foco"?"foco":"pausa")+" · "+hhmmss(rest)+" · ciclo "+(cc.ciclos+1);
+   box.classList.toggle("pausa",cc.fase==="pausa");
+   if(rest<=0)trocaFasePomodoro();
+  }else{
+   $("#cronoF").textContent=tipo;
+   box.classList.remove("pausa");
+  }
+ };
+ upd();
+ if(cronoTick)clearInterval(cronoTick);
+ cronoTick=setInterval(upd,1000);
+}
+function trocaFasePomodoro(){
+ const c=cronoAtivo();if(!c||!c.pomodoro)return;
+ if(c.fase==="foco"){
+  const min=Math.round((Date.now()-c.inicio)/60000);
+  if(min>=1){registraTempo(c.no,c.tipo,min);registraAtividade(min)}
+  c.ciclos=(c.ciclos||0)+1;
+  c.fase="pausa";
+  const longa=c.ciclos%4===0;
+  c.fimFase=Date.now()+((longa?(S.config.pomoLonga||15):(S.config.pomoPausa||5))*60000);
+  c.inicio=Date.now();
+  bipe();
+  toast("Ciclo "+c.ciclos+" concluído",(longa?"Pausa longa":"Pausa")+" — levante, beba água, olhe para longe.","ok");
+ }else{
+  c.fase="foco";
+  c.fimFase=Date.now()+((S.config.pomoFoco||25)*60000);
+  c.inicio=Date.now();
+  bipe();
+  toast("De volta ao foco","Ciclo "+(c.ciclos+1)+".","");
+ }
+ salva();
+}
+function bipe(){
+ try{
+  const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
+  const ctx=new A();const o=ctx.createOscillator(),g=ctx.createGain();
+  o.connect(g);g.connect(ctx.destination);o.type="sine";o.frequency.value=660;
+  g.gain.setValueAtTime(0.0001,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.16,ctx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.55);
+  o.start();o.stop(ctx.currentTime+0.6);
+  setTimeout(()=>{try{ctx.close()}catch(e){}},900);
+ }catch(e){}
+}
+function abreCrono(noSugerido){
+ const c=cronoAtivo();
+ if(c){paraCrono();return}
+ const H=nosDeHoje();
+ const cands=[...new Set([noSugerido,(S.ultimoLocal||{}).arg].concat(H.nos,H.extras).filter(x=>x&&NOMAP[x]))];
+ let h='<h3 style="margin:0 0 4px">Ligar o cronômetro</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 13px;line-height:1.55">O tempo fica preso ao nó e ao tipo de atividade. É isso que permite comparar, depois, onde você gastou horas contra o que a prova cobra.</p>'+
+  '<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px">assunto</div>'+
+  '<select id="crNo" style="width:100%;padding:9px 11px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface-2);margin-bottom:11px">';
+ h+='<option value="">— sem nó específico —</option>';
+ GRUPOS.forEach(g=>{
+  h+='<optgroup label="'+esc(g.titulo)+'">';
+  (GRPNOS[g.id]||[]).forEach(n=>{
+   h+='<option value="'+esc(n.id)+'"'+(cands[0]===n.id?" selected":"")+'>'+esc(n.titulo)+'</option>';
+  });
+  h+='</optgroup>';
+ });
+ h+='</select>'+
+  '<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px">atividade</div>'+
+  '<div id="crTipos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px"></div>'+
+  '<label style="display:flex;gap:9px;align-items:center;font-size:13.5px;margin-bottom:13px;cursor:pointer">'+
+   '<input type="checkbox" id="crPomo" checked><span>Usar Pomodoro — '+(S.config.pomoFoco||25)+' min de foco, '+(S.config.pomoPausa||5)+' de pausa, '+(S.config.pomoLonga||15)+' a cada 4 ciclos</span></label>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="crOk">Começar</button><button class="btn sec" id="crX">Cancelar</button></div>';
+ modal(h);
+ let tipoSel="conteudo";
+ const pinta=()=>{
+  $("#crTipos").innerHTML="";
+  TIPOS_ESTUDO.forEach(([k,rot])=>{
+   const b=el("button","btn"+(tipoSel===k?"":" sec")+" sm",rot);
+   b.onclick=()=>{tipoSel=k;pinta()};
+   $("#crTipos").appendChild(b);
+  });
+ };
+ pinta();
+ $("#crX").onclick=fechaModal;
+ $("#crOk").onclick=()=>{
+  iniciaCrono($("#crNo").value,tipoSel,$("#crPomo").checked);
+  fechaModal();
+ };
+}
+
+/* ---------------- REVISÕES DE CONTEÚDO ---------------- */
+VIEWS.revisoes=function(v){
+ const venc=revisoesVencidas(),est=estatRevisoes();
+ v.appendChild(el("h1","vt","Revisões de conteúdo"));
+ v.appendChild(el("p","vs","Fila separada da dos flashcards, e por um motivo: cartão testa fato isolado; o que a Cesgranrio cobra em norma é estrutura — a redação do item, quem faz o quê, o prazo. Isso só se mantém relendo o bloco inteiro em intervalo crescente. Cada bloco que você marca como lido volta em 1, 7, 30, 60 e 90 dias. Se não lembrar, ele recomeça do primeiro dia."));
+
+ const g=el("div","grid g4");g.style.marginBottom="13px";
+ g.appendChild(cartaoStat("Vencidas hoje",est.vencidas,est.vencidas?"reler agora":"fila em dia","","revisao",null,"nr"));
+ g.appendChild(cartaoStat("Em circulação",est.ativas,"blocos agendados","","conteudo",null,"org"));
+ g.appendChild(cartaoStat("Maduras",est.maduras,"intervalo ≥ 60 dias","","check",null,"social"));
+ g.appendChild(cartaoStat("Consolidadas",est.encerradas,"saíram da fila","","conq",null,"diag"));
+ v.appendChild(g);
+
+ if(!est.total){
+  v.appendChild(el("div","empty","<b>Nada agendado ainda.</b>A fila enche sozinha: todo bloco de conteúdo que você marcar como lido entra aqui."));
+  const b=el("button","btn","Ir para o conteúdo");b.onclick=()=>vai("conteudo");v.appendChild(b);
+  return;
+ }
+ if(!venc.length){
+  const c=el("div","card tom-social");c.style.marginBottom="13px";
+  c.appendChild(el("h3",null,"Fila em dia"));
+  const prox=proximasRevisoes(7);
+  c.appendChild(el("div",null,'<div style="font-size:14px;line-height:1.6;color:var(--ink-2)">Nenhum bloco vence hoje. '+
+   (prox.length?('Nos próximos sete dias voltam <b>'+prox.length+'</b> bloco(s) — o primeiro em '+esc(prox[0].proxima.split("-").reverse().slice(0,2).join("/"))+'.'):'Nada nos próximos sete dias.')+
+   ' Rever antes da hora não fixa mais; fixa menos, e gasta o tempo que faltaria em outro lugar.</div>'));
+  v.appendChild(c);
+ }else{
+  const c=el("div","card tom-nr");c.style.marginBottom="13px";
+  c.appendChild(el("h3",null,"Reler agora <span class='hint'>"+venc.length+" bloco(s)</span>"));
+  c.appendChild(el("div",null,'<div style="font-size:13.5px;color:var(--ink-2);line-height:1.55;margin-bottom:11px">Abra, leia de novo, e responda com honestidade se a estrutura estava na sua cabeça antes de reler. Mentir para o intervalo só engana você.</div>'));
+  const bb=el("div");bb.style.cssText="display:flex;gap:7px;flex-wrap:wrap";
+  const b1=el("button","btn","Começar pela primeira");
+  b1.onclick=()=>{const r=venc[0];REVISANDO={no:r.no,bloco:r.bloco};vai("conteudo",r.no)};
+  bb.appendChild(b1);
+  bb.appendChild(botaoImprimir("Imprimir os blocos de hoje",()=>{
+   imprime("Revisões de hoje","Blocos vencidos em "+new Date().toLocaleDateString("pt-BR"),
+    venc.map(r=>{const c2=CONTMAP[r.no];return c2?corpoBloco(c2,c2.blocos[r.bloco],r.bloco):""}).join(""));
+  }));
+  c.appendChild(bb);
+  v.appendChild(c);
+ }
+
+ const lista=venc.length?venc:proximasRevisoes(14);
+ const cl=el("div","card");
+ cl.appendChild(el("h3",null,(venc.length?"Vencidas":"Próximas duas semanas")+" <span class='hint'>"+lista.length+"</span>"));
+ const t=el("div","scrollx");const tb=el("table","t");
+ tb.innerHTML="<thead><tr><th style='width:190px'>Nó</th><th>Bloco</th><th style='width:76px'>Etapa</th><th style='width:84px'>Volta em</th><th style='width:250px'></th></tr></thead>";
+ const bd=el("tbody");
+ lista.slice(0,60).forEach(r=>{
+  const c2=CONTMAP[r.no];if(!c2)return;
+  const b=c2.blocos[r.bloco];if(!b)return;
+  const tr=el("tr");
+  const atraso=diasEntre(r.proxima,hoje());
+  const tit=((NOMAP[r.no]||{}).titulo||r.no);
+  tr.innerHTML="<td><span class='"+classeNo(r.no)+"' style='color:var(--tom);font-weight:700;font-size:11.5px;line-height:1.3;display:block' title=\""+esc(tit)+"\">"+esc(tit.length>34?tit.slice(0,32)+"…":tit)+"</span></td>"+
+   "<td style='font-size:12.5px'>"+esc(b.titulo||("Bloco "+(r.bloco+1)))+"</td>"+
+   "<td class='mono' style='font-size:11px'>"+((r.etapa||0)+1)+" de "+ESCADA.length+" · D+"+ESCADA[r.etapa||0]+"</td>"+
+   "<td class='mono' style='font-size:11px;color:"+(atraso>0?"var(--crit)":"var(--ink-3)")+"'>"+(atraso>0?("atrasada "+atraso+"d"):r.proxima.split("-").reverse().slice(0,2).join("/"))+"</td><td></td>";
+  const acao=el("div");acao.style.cssText="display:flex;gap:5px;flex-wrap:wrap";
+  const ba=el("button","btn sec sm","Reler");
+  ba.onclick=()=>{REVISANDO={no:r.no,bloco:r.bloco};vai("conteudo",r.no)};
+  acao.appendChild(ba);
+  if(r.proxima<=hoje()){
+   const bl=el("button","btn sm","Lembrava");
+   bl.onclick=()=>{revisaBloco(r.no,r.bloco,true);toast("Intervalo esticado","Volta em "+ESCADA[revisoes()[chaveBloco(r.no,r.bloco)].etapa]+" dias.","ok");roteia()};
+   const bn=el("button","btn sec sm","Não lembrava");
+   bn.onclick=()=>{revisaBloco(r.no,r.bloco,false);toast("Volta amanhã","O intervalo recomeçou. Isso é o sistema funcionando, não fracasso.","");roteia()};
+   acao.appendChild(bl);acao.appendChild(bn);
+  }
+  tr.lastChild.appendChild(acao);bd.appendChild(tr);
+ });
+ tb.appendChild(bd);t.appendChild(tb);cl.appendChild(t);
+ v.appendChild(cl);
+};
+let REVISANDO=null;
+
+/* ---------------- DIFICULDADE AUTOAVALIADA ---------------- */
+const ROTULOS_DIF=["","fácil","tranquilo","mediano","difícil","não entendi"];
+const CORES_DIF=["","#CDE9DA","#DCEBC8","#FBE6C4","#FBD8C9","#FAD9D1"];
+const CORES_DIF_ESC=["","#11301F","#17300F","#3A2A11","#3E1D13","#3A1B15"];
+const BORDA_DIF=["","#1F6B4C","#4A7A25","#8A5408","#9E3E24","#A32E1E"];
+function dificuldade(noId){const d=(S.dificuldade||{})[noId];return d?d.valor:0}
+function marcaDificuldade(noId,valor){
+ S.dificuldade=S.dificuldade||{};
+ if(!valor)delete S.dificuldade[noId];
+ else S.dificuldade[noId]={valor:valor,em:hoje()};
+ salva();
+}
+// nó marcado como fácil e com desempenho baixo é excesso de confiança —
+// é exatamente o que a banca pune com distrator de literalidade.
+function descalibrados(){
+ const out=[];
+ NOS.forEach(n=>{
+  const d=dificuldade(n.id),m=mastery(n.id);
+  const respondidas=(QPORNO[n.id]||[]).filter(q=>((S.questoes[q.id]||{}).tentativas||[]).length).length;
+  if(!d||respondidas<4)return;
+  if(d<=2&&m<0.55)out.push({no:n.id,tipo:"confianca",d,m});
+  else if(d>=4&&m>=0.8)out.push({no:n.id,tipo:"subestimou",d,m});
+ });
+ return out;
+}
+function seletorDificuldade(noId,depois){
+ const w=el("div");w.style.cssText="display:flex;gap:5px;flex-wrap:wrap;align-items:center";
+ for(let i=1;i<=5;i++){
+  const on=dificuldade(noId)===i;
+  const b=el("button","btn"+(on?"":" sec")+" sm",ROTULOS_DIF[i]);
+  b.onclick=()=>{marcaDificuldade(noId,on?0:i);if(depois)depois();};
+  w.appendChild(b);
+ }
+ return w;
+}
+function mapaDificuldade(onClick){
+ const w=el("div");
+ GRUPOS.forEach(g=>{
+  const ns=GRPNOS[g.id]||[];
+  const marc=ns.filter(n=>dificuldade(n.id)).length;
+  w.appendChild(el("div",null,'<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin:11px 0 5px">'+esc(g.titulo)+' <span style="color:var(--ink-3);opacity:.7">· '+marc+' de '+ns.length+' avaliados</span></div>'));
+  const gr=el("div","hmap");
+  ns.forEach(n=>{
+   const d=dificuldade(n.id);
+   const b=el("button",d?("d"+d):"",n.id.replace(/^(ESP|NR|LP|LI)-?/,""));
+   b.title=n.titulo+(d?(" — você marcou: "+ROTULOS_DIF[d]):" — ainda não avaliado")+" · domínio "+pct(mastery(n.id))+"%";
+   b.onclick=()=>onClick?onClick(n.id):vai(CONTMAP[n.id]?"conteudo":"no",n.id);
+   gr.appendChild(b);
+  });
+  w.appendChild(gr);
+ });
+ return w;
+}
+
+/* =========================================================
+   GRADE DE DISPONIBILIDADE SEMANAL
+   Plano que pede 4h numa terça em que ela tem 1h30 gera atraso,
+   atraso gera abandono, e plano abandonado é o modo de falha mais
+   comum de qualquer preparação. Então o plano passa a caber no dia real.
+   ========================================================= */
+const DIASEM=["dom","seg","ter","qua","qui","sex","sáb"];
+const DISPO_PADRAO={0:60,1:120,2:120,3:120,4:120,5:120,6:240};
+function dispo(){
+ const p=S.perfil||{};
+ if(!p.disponibilidade){return Object.assign({},DISPO_PADRAO)}
+ const d={};for(let i=0;i<7;i++)d[i]=Math.max(0,parseInt(p.disponibilidade[i],10)||0);
+ return d;
+}
+function dispoDefinida(){return !!(S.perfil&&S.perfil.disponibilidade)}
+function minutosSemana(){const d=dispo();let t=0;for(let i=0;i<7;i++)t+=d[i];return t}
+function minutosDoDia(iso){
+ const dt=new Date((iso||hoje())+"T12:00:00");
+ return dispo()[dt.getDay()];
+}
+// fator do dia: quanto este dia vale em relação ao dia médio da semana.
+// Domingo de 0 minuto zera a meta; sábado de 5h a multiplica.
+function fatorDoDia(iso){
+ const sem=minutosSemana();
+ if(!sem)return 0;
+ return minutosDoDia(iso)/(sem/7);
+}
+function salvaDispo(obj){
+ S.perfil=S.perfil||{};
+ S.perfil.disponibilidade=obj;
+ S.perfil.horasSemana=Math.round(minutosSemana()/60*10)/10;
+ salva();
+}
+// projeção honesta: no ritmo declarado, quantos blocos e questões dá para
+// cobrir até a prova, e o que sobra sem tocar.
+function projecaoRitmo(){
+ const M=metaDiaria();
+ const diasRest=Math.max(1,M.diasRestantes);
+ let minutosAte=0;
+ for(let k=0;k<diasRest;k++){
+  const dt=new Date();dt.setDate(dt.getDate()+k);
+  minutosAte+=dispo()[dt.getDay()];
+ }
+ // ritmo observado, se houver: minutos por bloco e por questão
+ const min30=totalMinutos(30);
+ const blocos30=(()=>{let n=0;Object.values(S.conteudoLido||{}).forEach(c=>{
+   Object.keys(c.dias||{}).forEach(d=>{if(diasEntre(d,hoje())<=30)n+=c.dias[d]})});return n})();
+ const q30=(()=>{let n=0;Object.values(S.questoes||{}).forEach(q=>(q.tentativas||[]).forEach(t=>{if(diasEntre(t.data,hoje())<=30)n++}));return n})();
+ const unidades=blocos30+q30;
+ // o ritmo medido é limitado a uma faixa plausível: sem isso, uma sessão longa
+ // registrada num dia de poucas unidades produz uma projeção sem sentido.
+ let minPorUnidade=(min30&&unidades)?min30/unidades:4.0;
+ const medidoValido=!!(min30&&unidades>=15);
+ if(!medidoValido)minPorUnidade=4.0;
+ minPorUnidade=Math.min(12,Math.max(0.8,minPorUnidade));
+ const unidadesPossiveis=Math.floor(minutosAte/minPorUnidade);
+ const faltam=M.blocosFalta+M.qsInedita;
+ return {minutosAte,horasAte:Math.round(minutosAte/60),minPorUnidade:Math.round(minPorUnidade*10)/10,
+  unidadesPossiveis,faltam,cobre:unidadesPossiveis>=faltam,
+  medido:medidoValido,
+  deficit:Math.max(0,faltam-unidadesPossiveis)};
+}
+VIEWS.rotina=function(v){
+ v.appendChild(el("h1","vt","Minha rotina"));
+ v.appendChild(el("p","vs","Quanto tempo você tem, de verdade, em cada dia da semana. O plano e a meta diária passam a caber nesse tempo em vez de num dia genérico — um domingo de zero minuto deixa de cobrar meta, e um sábado longo passa a puxar mais."));
+
+ const cd=el("div","card tom-org");cd.style.marginBottom="13px";
+ cd.appendChild(el("h3",null,"Minutos disponíveis por dia"));
+ const d=dispo();
+ const gr=el("div","gsem");
+ for(let i=0;i<7;i++){
+  const w=el("div","dd");
+  w.innerHTML='<b>'+DIASEM[i]+'</b>';
+  const inp=el("input");inp.type="number";inp.min="0";inp.max="960";inp.step="15";inp.value=d[i];
+  inp.dataset.dia=i;
+  w.appendChild(inp);
+  const sm=el("small");sm.textContent=hhmm(d[i]);
+  w.appendChild(sm);
+  inp.oninput=()=>{sm.textContent=hhmm(parseInt(inp.value,10)||0);atualizaResumo()};
+  gr.appendChild(w);
+ }
+ cd.appendChild(gr);
+ const resumo=el("div");resumo.style.cssText="font-size:13.5px;color:var(--ink-2);margin-top:13px;line-height:1.6";
+ cd.appendChild(resumo);
+ const bb=el("div");bb.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px";
+ const bs=el("button","btn","Salvar a minha rotina");
+ bs.onclick=()=>{
+  const o={};document.querySelectorAll(".gsem input").forEach(x=>o[x.dataset.dia]=Math.max(0,parseInt(x.value,10)||0));
+  salvaDispo(o);
+  toast("Rotina salva","A meta de hoje e o plano já estão usando esses minutos.","ok");roteia();
+ };
+ const br=el("button","btn sec","Voltar ao padrão");
+ br.onclick=()=>{salvaDispo(Object.assign({},DISPO_PADRAO));toast("Rotina redefinida","","ok");roteia()};
+ bb.appendChild(bs);bb.appendChild(br);cd.appendChild(bb);
+ v.appendChild(cd);
+ function atualizaResumo(){
+  let t=0;document.querySelectorAll(".gsem input").forEach(x=>t+=Math.max(0,parseInt(x.value,10)||0));
+  resumo.innerHTML='<b>'+hhmm(t)+' por semana</b> — média de '+hhmm(Math.round(t/7))+' por dia. '+
+   (t<420?'Menos de 7 horas semanais é pouco para 90 dias: o plano vai caber, mas a projeção de nota vai cair junto — e é melhor saber disso agora.':
+    t>3000?'Mais de 50 horas por semana é insustentável por 90 dias. Prefira um número que você consiga repetir na terceira semana.':
+    'É um ritmo que dá para sustentar.');
+ }
+ atualizaResumo();
+
+ const pr=projecaoRitmo();
+ const cp=el("div","card tom-"+(pr.cobre?"social":"nr"));cp.style.marginBottom="13px";
+ cp.appendChild(el("h3",null,"O que essa rotina alcança até 29/11"));
+ const txtPr='<div style="font-size:14.5px;line-height:1.7;color:var(--ink-2)">'+
+  'No ritmo declarado sobram <b>'+pr.horasAte+' horas</b> até a prova. '+
+  (pr.medido
+    ? 'Pelos seus últimos 30 dias, cada bloco ou questão está custando <b>'+num(pr.minPorUnidade)+' minuto(s)</b>. '
+    : 'Ainda não há medição sua suficiente, então uso 4 minutos por bloco ou questão como estimativa — o número se corrige sozinho conforme você usar o cronômetro. ')+
+  'Isso dá para cobrir cerca de <b>'+pr.unidadesPossiveis+'</b> unidades de estudo, e faltam <b>'+pr.faltam+'</b> — somando blocos não lidos e questões que você nunca viu. '+
+  (pr.cobre
+    ? '<b style="color:var(--ok)">A rotina cobre o edital com folga.</b>'
+    : '<b style="color:var(--crit)">Faltam '+pr.deficit+' unidades.</b> Ou você aumenta o tempo, ou aceita deixar de fora os nós de menor peso — e é melhor escolher quais agora do que descobrir no dia.')+
+  '</div>';
+ cp.appendChild(el("div",null,txtPr));
+ v.appendChild(cp);
+
+ const cm=el("div","card");cm.style.marginBottom="13px";
+ cm.appendChild(el("h3",null,"Pomodoro <span class='hint'>usado pelo cronômetro</span>"));
+ const gp=el("div","grid g3");
+ [["pomoFoco","Foco",25],["pomoPausa","Pausa curta",5],["pomoLonga","Pausa longa (a cada 4)",15]].forEach(([k,rot,pad])=>{
+  const w=el("div");
+  w.innerHTML='<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px">'+esc(rot)+'</div>';
+  const i=el("input");i.type="number";i.min="1";i.max="90";i.value=S.config[k]||pad;
+  i.style.cssText="width:100%;padding:8px 11px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface-2);font-family:'JetBrains Mono',monospace";
+  i.onchange=()=>{S.config[k]=Math.max(1,Math.min(90,parseInt(i.value,10)||pad));salva()};
+  w.appendChild(i);gp.appendChild(w);
+ });
+ cm.appendChild(gp);
+ const bc=el("button","btn");bc.style.marginTop="13px";bc.textContent="Ligar o cronômetro agora";
+ bc.onclick=()=>abreCrono();cm.appendChild(bc);
+ v.appendChild(cm);
+
+ /* ---- dificuldade autoavaliada ---- */
+ const cdif=el("div","card");
+ cdif.appendChild(el("h3",null,"Como cada assunto parece para você <span class='hint'>clique para avaliar</span>"));
+ cdif.appendChild(el("div",null,'<div style="font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-bottom:9px">'+
+  'O domínio calculado vem de acerto em questão, e isso é cego para o nó que você ainda não praticou e para a diferença entre acertar sabendo e acertar por eliminação. '+
+  'A sua percepção entra como segundo sinal na prioridade — pesa menos que o desempenho medido, mas pesa.</div>'));
+ const leg=el("div");leg.style.cssText="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px;font-size:11px;color:var(--ink-3)";
+ leg.style.cssText="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:11px;font-size:11.5px;color:var(--ink-3);align-items:center";
+ [1,2,3,4,5].forEach(i=>{
+  leg.appendChild(el("span",null,'<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:15px;height:11px;border-radius:3px;display:inline-block;background:'+CORES_DIF[i]+';border:1px solid '+BORDA_DIF[i]+'"></i>'+ROTULOS_DIF[i]+'</span>'));
+ });
+ cdif.appendChild(leg);
+ cdif.appendChild(mapaDificuldade(id=>abreDificuldade(id)));
+ const desc=descalibrados();
+ if(desc.length){
+  const cw=el("div");cw.style.cssText="margin-top:15px;border-left:4px solid var(--warn);background:var(--warn-soft);border-radius:var(--radius-p);padding:11px 13px";
+  cw.innerHTML='<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">calibração</div>'+
+   desc.slice(0,6).map(x=>'<div style="font-size:13px;line-height:1.5;color:var(--ink);margin-bottom:4px">'+
+    (x.tipo==="confianca"
+      ? '<b>'+esc((NOMAP[x.no]||{}).titulo||x.no)+'</b> — você marcou como <b>'+ROTULOS_DIF[x.d]+'</b>, mas o seu acerto ali é de '+pct(x.m)+'%. Excesso de confiança é o que o distrator de literalidade pune.'
+      : '<b>'+esc((NOMAP[x.no]||{}).titulo||x.no)+'</b> — você marcou como <b>'+ROTULOS_DIF[x.d]+'</b> e acerta '+pct(x.m)+'%. Você sabe mais do que pensa; pode gastar menos tempo aqui.')+
+    '</div>').join("");
+  cdif.appendChild(cw);
+ }
+ v.appendChild(cdif);
+};
+function abreDificuldade(noId){
+ const n=NOMAP[noId];if(!n)return;
+ modal('<h3 style="margin:0 0 4px">'+esc(n.titulo)+'</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 6px">Como este assunto parece para você hoje?</p>'+
+  '<div style="font-size:12px;color:var(--ink-3);margin:0 0 13px">Domínio medido pelas suas questões: <b>'+pct(mastery(noId))+'%</b></div>'+
+  '<div id="dfw"></div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><button class="btn sec" id="dfEstudar">Abrir este nó</button><button class="btn sec" id="dfX">Fechar</button></div>');
+ $("#dfw").appendChild(seletorDificuldade(noId,()=>{fechaModal();toast("Anotado","Isso entra na sua prioridade de estudo.","ok");roteia()}));
+ $("#dfX").onclick=fechaModal;
+ $("#dfEstudar").onclick=()=>{fechaModal();vai(CONTMAP[noId]?"conteudo":"no",noId)};
+}
+const hhmm=m=>{m=Math.max(0,Math.round(m||0));const h=Math.floor(m/60),r=m%60;return h?(h+"h"+(r?String(r).padStart(2,"0"):"")):(r+" min")};
+
+/* =========================================================
+   EXPORTAÇÃO PARA O CALENDÁRIO (.ics)
+   Sem servidor não existe notificação. Mas o calendário do celular
+   dela existe — então o PETROPSI escreve nele e o telefone vira o
+   despertador. É a forma de resolver a limitação, não de contorná-la.
+   ========================================================= */
+function icsEscapa(t){
+ return String(t||"").replace(/\\/g,"\\\\").replace(/;/g,"\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+}
+function icsDobra(linha){
+ // RFC 5545: no máximo 75 OCTETOS por linha, não 75 caracteres — e acento
+ // em UTF-8 ocupa dois. Dobrar por caractere estoura o limite e alguns
+ // calendários recusam o arquivo. Aqui a conta é em bytes, e o corte nunca
+ // cai no meio de um caractere.
+ const enc=(typeof TextEncoder!=="undefined")?new TextEncoder():null;
+ const bytes=t=>enc?enc.encode(t).length:t.length;
+ if(bytes(linha)<=75)return linha;
+ const out=[];
+ let atual="",limite=75,primeira=true;
+ for(const ch of linha){
+  const cand=atual+ch;
+  if(bytes(cand)>(primeira?limite:limite-1)){
+   out.push(atual);atual=ch;primeira=false;
+  }else atual=cand;
+ }
+ if(atual)out.push(atual);
+ return out.map((l,i)=>i?(" "+l):l).join("\r\n");
+}
+function icsData(iso){return iso.replace(/-/g,"")}
+function icsCarimbo(){return new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"")}
+function montaICS(opts){
+ opts=opts||{};
+ const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//PETROPSI//Estudo TRANSPETRO 2026//PT-BR",
+          "CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:PETROPSI — estudo","X-WR-TIMEZONE:America/Sao_Paulo"];
+ const carimbo=icsCarimbo();
+ let n=0;
+ const ev=(uid,dia,titulo,desc,alarme)=>{
+  n++;
+  const fim=maisDias(dia,1);
+  L.push("BEGIN:VEVENT");
+  L.push("UID:"+uid+"@petropsi");
+  L.push("DTSTAMP:"+carimbo);
+  L.push("DTSTART;VALUE=DATE:"+icsData(dia));
+  L.push("DTEND;VALUE=DATE:"+icsData(fim));
+  L.push(icsDobra("SUMMARY:"+icsEscapa(titulo)));
+  if(desc)L.push(icsDobra("DESCRIPTION:"+icsEscapa(desc)));
+  L.push("TRANSP:TRANSPARENT");
+  if(alarme){
+   // evento de dia inteiro começa à meia-noite; o alarme é DEPOIS do início,
+   // então o disparo às 8h da manhã é +PT8H, não -PT11H.
+   L.push("BEGIN:VALARM","ACTION:DISPLAY",icsDobra("DESCRIPTION:"+icsEscapa(titulo)),
+          "TRIGGER;RELATED=START:PT"+(opts.horaAlarme||8)+"H","END:VALARM");
+  }
+  L.push("END:VEVENT");
+ };
+ // 1. o plano de estudos
+ if(opts.plano!==false){
+  const P=geraPlano(false);
+  (P.dias||[]).filter(d=>d.data>=hoje()).forEach(d=>{
+   const alvo=(d.nos||[]).concat((d.extras||[]).filter(x=>(d.nos||[]).indexOf(x)<0));
+   if(!alvo.length)return;
+   const titulos=alvo.map(id=>(NOMAP[id]||{}).titulo||id);
+   ev("plano-"+d.data,d.data,
+      "PETROPSI · "+(d.fase==="revisao"?"revisão":"estudo")+": "+titulos[0]+(titulos.length>1?" (+"+(titulos.length-1)+")":""),
+      "Protocolo do dia:\n"+titulos.map((t,i)=>(i+1)+". "+t).join("\n")+
+      (d.minutos?("\n\nTempo previsto na sua rotina: "+hhmm(d.minutos)):"")+
+      "\n\nAbra o PETROPSI para estudar.",
+      true);
+  });
+ }
+ // 2. as revisões de conteúdo agendadas
+ if(opts.revisoes!==false){
+  const R=revisoes(),porDia={};
+  Object.keys(R).forEach(k=>{const r=R[k];
+   if(!r||r.encerrada||r.proxima<hoje())return;
+   if(!CONTMAP[r.no])return;
+   (porDia[r.proxima]=porDia[r.proxima]||[]).push(r);
+  });
+  Object.keys(porDia).sort().forEach(dia=>{
+   const rs=porDia[dia];
+   const nomes=[...new Set(rs.map(r=>(NOMAP[r.no]||{}).titulo||r.no))];
+   ev("rev-"+dia,dia,"PETROPSI · revisar "+rs.length+" bloco(s)",
+      "Blocos que vencem hoje:\n"+nomes.map(x=>"• "+x).join("\n")+
+      "\n\nAbra Revisões de conteúdo no PETROPSI.",true);
+  });
+ }
+ // 3. as datas do certame
+ if(opts.certame!==false){
+  [["2026-11-24","Cartão de confirmação da inscrição","Consulte no site da Cesgranrio o local de prova."],
+   ["2026-11-28","Véspera da prova","Revisão relâmpago, documento e caneta separados, alarme conferido. Nada de conteúdo novo."],
+   ["2026-11-29","PROVA — TRANSPETRO, Psicóloga (Ênfase 31)","70 questões, 4h30. Fase 1: 50 de Psicologia. Fase 2: 10 de Português + 10 de Inglês."],
+   ["2026-11-30","Gabarito preliminar","Confira e anote as questões duvidosas para o recurso."],
+   ["2026-12-01","Último dia de recurso contra o gabarito","Prazo: 30/11 e 01/12."],
+   ["2027-01-08","Imagem do cartão-resposta",""],
+   ["2027-01-14","Notas e resultado preliminar",""],
+   ["2027-03-23","Resultado final previsto",""]
+  ].forEach(([dia,t,ds])=>{
+   if(dia<hoje())return;
+   ev("cert-"+dia,dia,"PETROPSI · "+t,ds+(ds?"\n\n":"")+"Data do edital — sujeita a alteração por novo Edital.",true);
+  });
+ }
+ L.push("END:VCALENDAR");
+ return {texto:L.join("\r\n"),eventos:n};
+}
+async function exportaICS(opts){
+ const r=montaICS(opts);
+ if(!r.eventos){toast("Nada para exportar","Não há dias, revisões nem datas futuras neste recorte.","");return}
+ const nome="petropsi-"+hoje()+".ics";
+ let entregue=false;
+ // 1º caminho: capacidade de download do visualizador
+ try{
+  if(window.claude&&window.claude.use){
+   const dl=await window.claude.use("downloads");
+   if(dl){await dl.save({filename:nome,data:r.texto});entregue=true;}
+  }
+ }catch(e){}
+ // 2º caminho: âncora de download — funciona no endereço próprio dela
+ if(!entregue){
+  try{
+   const bl=new Blob([r.texto],{type:"text/calendar;charset=utf-8"});
+   const url=URL.createObjectURL(bl);
+   const a=document.createElement("a");a.href=url;a.download=nome;a.rel="noopener";
+   document.body.appendChild(a);a.click();
+   setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
+   entregue="talvez";
+  }catch(e){}
+ }
+ // 3º caminho, sempre disponível: o texto na tela para copiar
+ mostraICS(r,nome,entregue);
+}
+function mostraICS(r,nome,entregue){
+ modal('<h3 style="margin:0 0 4px">Calendário gerado — '+r.eventos+' evento(s)</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 11px;line-height:1.6">'+
+  (entregue===true?'O arquivo <b>'+esc(nome)+'</b> foi baixado. Abra-o no celular e o calendário importa tudo, com alarme às 8h de cada dia.':
+   entregue==="talvez"?'Tentei baixar <b>'+esc(nome)+'</b>. Se o download não apareceu — alguns visualizadores bloqueiam —, copie o texto abaixo, cole num arquivo com a extensão <b>.ics</b> e abra no celular.':
+   'Copie o texto abaixo, cole num arquivo com a extensão <b>.ics</b> e abra no celular.')+
+  '</p>'+
+  '<div style="font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-p);padding:10px 12px;margin-bottom:11px;line-height:1.55">'+
+  '<b>No iPhone:</b> salve o arquivo em Arquivos e toque nele.<br><b>No Android:</b> abra o Google Agenda no computador, Configurações → Importar e exportar → Importar.</div>'+
+  '<textarea id="icsT" readonly style="width:100%;height:170px;font-family:\'JetBrains Mono\',monospace;font-size:10.5px;padding:10px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface-2);white-space:pre;overflow:auto"></textarea>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:13px"><button class="btn" id="icsC">Copiar o calendário</button><button class="btn sec" id="icsX">Fechar</button></div>');
+ $("#icsT").value=r.texto;
+ $("#icsX").onclick=fechaModal;
+ $("#icsC").onclick=()=>{
+  const t=$("#icsT");t.select();t.setSelectionRange(0,999999);
+  const ok=()=>{toast("Copiado","Cole num arquivo .ics e abra no celular.","ok")};
+  if(navigator.clipboard)navigator.clipboard.writeText(r.texto).then(ok).catch(()=>{try{document.execCommand("copy");ok()}catch(e){}});
+  else{try{document.execCommand("copy");ok()}catch(e){}}
+ };
+}
+function abreExportarICS(){
+ modal('<h3 style="margin:0 0 4px">Levar para o calendário do celular</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 13px;line-height:1.6">O PETROPSI não manda notificação — não tem servidor para isso. Mas o seu calendário manda. Escolha o que exportar; cada evento vem com alarme às 8h da manhã.</p>'+
+  '<div id="icsO"></div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><button class="btn" id="icsG">Gerar o arquivo</button><button class="btn sec" id="icsN">Cancelar</button></div>');
+ const o=$("#icsO");
+ [["plano","O plano de estudos dia a dia, de hoje até a prova"],
+  ["revisoes","As revisões de conteúdo agendadas"],
+  ["certame","As datas do certame — prova, gabarito, recurso, resultado"]].forEach(([k,rot])=>{
+  const l=el("label");l.style.cssText="display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:13.5px;cursor:pointer";
+  l.innerHTML='<input type="checkbox" data-k="'+k+'" checked style="margin-top:3px"><span>'+esc(rot)+'</span>';
+  o.appendChild(l);
+ });
+ $("#icsN").onclick=fechaModal;
+ $("#icsG").onclick=()=>{
+  const opts={};document.querySelectorAll("#icsO input").forEach(x=>opts[x.dataset.k]=x.checked);
+  fechaModal();setTimeout(()=>exportaICS(opts),120);
+ };
+}
+
+/* =========================================================
+   ONDE GASTEI × ONDE VALE PONTO
+   Duas medidas de escala diferente (minutos e questões) não podem
+   dividir um gráfico com dois eixos. A saída honesta é indexar as duas
+   à mesma base: a FATIA de cada bloco no total. Aí o eixo é um só, em %,
+   e a comparação passa a significar alguma coisa.
+   ========================================================= */
+function dadosHorasVsPeso(dias){
+ const min=minutosPorGrupo(dias);
+ const totMin=GRUPOS.reduce((a,g)=>a+(min[g.id]||0),0);
+ const totQ=GRUPOS.reduce((a,g)=>a+g.questoesProva,0);
+ return GRUPOS.map(g=>{
+  const fatiaTempo=totMin?(min[g.id]||0)/totMin:0;
+  const fatiaProva=g.questoesProva/totQ;
+  return {id:g.id,titulo:g.titulo,minutos:min[g.id]||0,questoes:g.questoesProva,
+   fatiaTempo,fatiaProva,gap:fatiaTempo-fatiaProva};
+ }).sort((a,b)=>b.fatiaProva-a.fatiaProva);
+}
+function graficoHorasVsPeso(dias){
+ const d=dadosHorasVsPeso(dias);
+ const totMin=d.reduce((a,x)=>a+x.minutos,0);
+ const w=el("div");
+ if(!totMin){
+  w.appendChild(el("div","empty","<b>Ainda não há tempo registrado.</b>Ligue o cronômetro quando começar a estudar — sem medir, a divisão do seu tempo é palpite."));
+  return w;
+ }
+ const leg=el("div","legpar");
+ leg.innerHTML='<span><i style="background:var(--accent)"></i> fatia do seu tempo</span>'+
+   '<span><i style="background:var(--line-2);opacity:.75"></i> fatia dos pontos na prova</span>'+
+   '<span style="color:var(--ink-3)">as duas em % do total — mesma base, mesmo eixo</span>';
+ w.appendChild(leg);
+ const max=Math.max(0.01,...d.map(x=>Math.max(x.fatiaTempo,x.fatiaProva)));
+ d.forEach(x=>{
+  const r=el("div","barpar "+("tom-"+tomDoGrupo(x.id)));
+  const gapTxt=(x.gap>=0?"+":"−")+Math.abs(Math.round(x.gap*100))+" pp";
+  const sinal=Math.abs(x.gap)<0.04?"var(--ink-3)":(x.gap>0?"var(--warn)":"var(--crit)");
+  r.innerHTML='<div class="nm"><span class="marcatom" style="margin-right:6px;vertical-align:middle"></span>'+esc(x.titulo)+'</div>'+
+   '<div class="tr">'+
+    '<i class="a" style="width:'+(x.fatiaTempo/max*100).toFixed(1)+'%"><title>'+esc(x.titulo)+': '+hhmm(x.minutos)+' — '+Math.round(x.fatiaTempo*100)+'% do seu tempo</title></i>'+
+    '<i class="b" style="width:'+(x.fatiaProva/max*100).toFixed(1)+'%"><title>'+esc(x.titulo)+': '+x.questoes+' questões — '+Math.round(x.fatiaProva*100)+'% da prova</title></i>'+
+   '</div>'+
+   '<div class="vl">'+hhmm(x.minutos)+'<br><b style="color:'+sinal+'">'+gapTxt+'</b></div>';
+  w.appendChild(r);
+ });
+ // leitura em uma frase, a partir do maior desvio
+ const pior=d.slice().sort((a,b)=>a.gap-b.gap)[0];
+ const mais=d.slice().sort((a,b)=>b.gap-a.gap)[0];
+ const nota=el("div");nota.style.cssText="font-size:13.5px;line-height:1.65;color:var(--ink-2);margin-top:13px";
+ let txt="";
+ if(pior&&pior.gap<-0.05)txt+="<b>"+esc(pior.titulo)+"</b> vale "+Math.round(pior.fatiaProva*100)+"% dos pontos e está levando "+Math.round(pior.fatiaTempo*100)+"% do seu tempo. É o bloco mais subinvestido. ";
+ if(mais&&mais.gap>0.08)txt+="<b>"+esc(mais.titulo)+"</b> está levando "+Math.round(mais.fatiaTempo*100)+"% do tempo para "+Math.round(mais.fatiaProva*100)+"% dos pontos — pode ser aprofundamento legítimo, pode ser zona de conforto. ";
+ if(!txt)txt="A divisão do seu tempo está razoavelmente alinhada com o peso dos blocos na prova. ";
+ txt+="Um desvio de até 4 pontos percentuais é ruído; acima disso, é escolha — e vale ser escolha consciente.";
+ nota.innerHTML=txt;
+ w.appendChild(nota);
+ // visão em tabela, para quem não lê barra
+ const det=el("details");det.style.marginTop="11px";
+ det.innerHTML='<summary style="cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:600">Ver como tabela</summary>';
+ const tb=el("table","t");tb.style.marginTop="9px";
+ tb.innerHTML="<thead><tr><th>Bloco</th><th style='width:88px'>Tempo</th><th style='width:74px'>% tempo</th><th style='width:74px'>% prova</th><th style='width:70px'>Desvio</th></tr></thead>"+
+  "<tbody>"+d.map(x=>"<tr><td style='font-size:12.5px'>"+esc(x.titulo)+"</td><td class='mono'>"+hhmm(x.minutos)+
+  "</td><td class='mono'>"+Math.round(x.fatiaTempo*100)+"%</td><td class='mono'>"+Math.round(x.fatiaProva*100)+
+  "%</td><td class='mono'>"+(x.gap>=0?"+":"−")+Math.abs(Math.round(x.gap*100))+" pp</td></tr>").join("")+"</tbody>";
+ const sc=el("div","scrollx");sc.appendChild(tb);det.appendChild(sc);
+ w.appendChild(det);
+ return w;
+}
+function blocoTempo(){
+ const c=el("div","card");c.style.marginBottom="13px";
+ c.appendChild(el("h3",null,ic("crono",15)+"Onde gastei o tempo × onde vale ponto <span class='hint'>últimos 30 dias</span>"));
+ c.appendChild(graficoHorasVsPeso(30));
+ const bb=el("div");bb.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px";
+ const b1=el("button","btn sm",cronoAtivo()?"Parar o cronômetro":"Ligar o cronômetro");
+ b1.onclick=()=>cronoAtivo()?paraCrono():abreCrono();bb.appendChild(b1);
+ const b2=el("button","btn sec sm","Minha rotina");b2.onclick=()=>vai("rotina");bb.appendChild(b2);
+ c.appendChild(bb);
+ return c;
+}
+function blocoTipos(){
+ const t=minutosPorTipo(30),tot=Object.values(t).reduce((a,b)=>a+b,0);
+ const c=el("div","card");c.style.marginBottom="13px";
+ c.appendChild(el("h3",null,"Em que você gastou <span class='hint'>por tipo de atividade · 30 dias</span>"));
+ if(!tot){c.appendChild(el("div","empty","<b>Nada registrado ainda.</b>"));return c}
+ const w=el("div");
+ TIPOS_ESTUDO.forEach(([k,rot])=>{
+  const m=t[k]||0;if(!m)return;
+  const r=el("div");r.style.cssText="display:grid;grid-template-columns:150px 1fr 74px;gap:11px;align-items:center;padding:5px 0";
+  r.innerHTML='<div style="font-size:12.5px;color:var(--ink-2);font-weight:600">'+esc(rot)+'</div>'+
+   '<div style="height:10px;background:var(--surface-3);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:'+(m/tot*100).toFixed(1)+'%;background:var(--accent);border-radius:3px"></i></div>'+
+   '<div class="mono" style="font-size:11px;text-align:right;color:var(--ink-3)">'+hhmm(m)+'</div>';
+  w.appendChild(r);
+ });
+ c.appendChild(w);
+ c.appendChild(el("div",null,'<div style="font-size:12.5px;color:var(--ink-3);margin-top:9px">Total nos últimos 30 dias: <b>'+hhmm(tot)+'</b> · média de '+hhmm(Math.round(tot/30))+' por dia.</div>'));
+ return c;
+}
+
 /* =========================================================
    DIAGRAMAS — imagem que carrega estrutura, não enfeite.
    Codificação dupla: a mesma ideia em texto e em figura fixa
@@ -4172,6 +5086,18 @@ const TELAS=[
    ["Trilha de bolinhas","Logo abaixo da barra de progresso, uma bolinha por slide, na cor do estado. Clique para pular direto."],
    ["Marcar como concluído","Fecha o slide e avança. Clicar de novo desmarca. Fica gravado e sobrevive a atualização do sistema."],
    ["Imprimir / PDF","Sai a apresentação inteira em texto, com o estado de cada slide anotado."]]},
+ {id:"revisoes",tom:"nr",nm:"Revisões de conteúdo",ic:"revisao",oq:"A segunda fila, e a que segura a estrutura das normas.",
+  itens:[
+   ["Por que ela existe separada dos cartões","Cartão testa fato isolado. O que a Cesgranrio cobra em norma é estrutura: a redação do item, quem faz o quê, o prazo. Isso não cabe num cartão — só se mantém relendo o bloco inteiro."],
+   ["Como enche","Sozinha. Todo bloco que você marca como lido entra na fila e volta em 1, 7, 30, 60 e 90 dias."],
+   ["Lembrava / Não lembrava","Responda antes de reler, com honestidade. “Lembrava” estica o intervalo; “não lembrava” recomeça do primeiro dia — e isso é o sistema funcionando, não fracasso."],
+   ["Consolidada","Depois de acertar a escada inteira, o bloco sai da fila. Não é esquecimento: é que a essa altura o intervalo já passou da data da prova."]]},
+ {id:"rotina",tom:"org",nm:"Minha rotina",ic:"crono",oq:"O tempo que você tem de verdade, e o que ele alcança.",
+  itens:[
+   ["Minutos por dia da semana","Declare o tempo real, não o desejado. A meta diária e o plano passam a caber nele: um domingo de zero minuto deixa de cobrar meta e não recebe nó; um sábado de cinco horas recebe mais."],
+   ["O que essa rotina alcança","A conta de quantas horas sobram até 29/11 e se elas cobrem o que falta. Enquanto não houver cronômetro suficiente, uso 4 minutos por bloco ou questão como estimativa — depois o número passa a ser o seu ritmo medido."],
+   ["Pomodoro","Foco, pausa curta e pausa longa, configuráveis. O cronômetro toca um bipe e troca de fase sozinho."],
+   ["Como cada assunto parece para você","A escala de fácil a “não entendi”, por nó, virando mapa de calor. Entra na prioridade como segundo sinal e acusa descalibração: nó que você marcou como fácil e erra muito é excesso de confiança — exatamente o que o distrator de literalidade pune."]]},
  {id:"cartoes",tom:"saude",nm:"Flashcards",ic:"cartao",oq:"Repetição espaçada. É aqui que a memória de longo prazo se forma.",
   itens:[
    ["Por que a fila mistura assuntos","Ela não é organizada por matéria, e sim por data de vencimento. Cada cartão tem o seu próprio intervalo: um que você acertou fácil volta daqui a duas semanas, um que errou volta amanhã. Como você estudou coisas diferentes em dias diferentes, num mesmo dia vencem cartões de vários assuntos. Isso é de propósito — misturar temas (intercalação) fixa mais do que treinar um bloco só, mesmo parecendo mais difícil na hora."],
@@ -4203,6 +5129,7 @@ const TELAS=[
   itens:[
    ["Voltar o sistema a um dia anterior","Uma cópia por dia, guardada antes das mudanças daquele dia. Se algo der errado, escolha a data e tudo volta ao ponto. O estado atual também vira cópia antes de restaurar."],
    ["Exportar e importar","Um arquivo com todo o seu histórico. Exporte de vez em quando: é a garantia contra o navegador limpar os dados do site."],
+   ["Calendário do celular","Exporta o plano, as revisões e as datas do certame num arquivo .ics. Como não existe servidor aqui, não existe notificação — quem passa a avisar é o calendário do seu telefone."],
    ["Endereços separados","O navegador guarda o progresso por endereço. O que você faz em petropsi.carlianelopes.com.br não aparece na versão do claude.ai, e vice-versa. Escolha um e fique nele."]]}
 ];
 VIEWS.tutorial=function(v){
@@ -4412,6 +5339,13 @@ VIEWS.config=function(v){
   bb2.appendChild(bcp);bb2.appendChild(blp);ce.appendChild(bb2);
   v.appendChild(ce);
  }
+ const cics=el("div","card tom-social");cics.style.marginBottom="13px";
+ cics.appendChild(el("h3",null,"Calendário do celular"));
+ cics.appendChild(el("div",null,'<div style="font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:11px">O PETROPSI não manda notificação — não tem servidor para isso. O que ele faz é escrever no calendário do seu celular, com alarme às 8h de cada dia. Reexporte quando o plano mudar; os eventos antigos são substituídos, não duplicados.</div>'));
+ const bics2=el("button","btn","Exportar plano, revisões e datas do certame");
+ bics2.onclick=abreExportarICS;cics.appendChild(bics2);
+ v.appendChild(cics);
+
  /* ---- pontos de restauração ---- */
  const cpt=el("div","card");cpt.style.marginBottom="13px";
  cpt.appendChild(el("h3",null,"Voltar o sistema a um dia anterior <span class='hint'>uma cópia por dia, as 20 mais recentes</span>"));
@@ -4459,7 +5393,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.2.0):</b> nova tela <b>Diagramas</b> — figuras que mostram a estrutura de uma norma ou de uma decisão, com a fonte de cada afirmação e saída em papel ou PDF. Elas aparecem também dentro do módulo de conteúdo do nó a que pertencem.<br><br><b>2.1.0:</b> o banco foi de 1.027 para <b>1.191 questões</b>, e as de prova real de 354 para <b>518</b>, em <b>37 provas</b>. Entraram BNDES 2024 de Psicologia Organizacional e UNEMAT 2024, ambas Cesgranrio, e os blocos de Português e Inglês de Transpetro 2018, Transpetro 2023, Petrobras 2018, BNDES 2024 e CAIXA 2026 — como a banca aplica o mesmo caderno de Conhecimentos Básicos a todos os cargos de nível superior do certame, essas questões são literalmente a sua Fase 2. Cada prova ganhou uma nota de contexto. Nova tela <b>Questões anuladas</b>, com 61 anulações documentadas. O assistente passou a indexar tudo isso e a cruzar o mesmo assunto entre provas. E cada nó do edital ganhou o seu tom de cor dentro da cor do bloco.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
  v.appendChild(c4);
 };
 
@@ -4515,6 +5449,8 @@ function pintaPpt(){
 }
 $("#pptPrev").onclick=()=>{if(PPT.i>0){PPT.i--;pintaPpt()}};
 $("#pptNext").onclick=()=>{if(PPT.i<PPT.slides.length-1){PPT.i++;pintaPpt()}};
+$("#cronoP").onclick=()=>paraCrono();
+$("#crono").addEventListener("click",e=>{if(e.target.id!=="cronoP")vai("desempenho")});
 $("#iabtn").innerHTML=ic("ia",26);
 $("#iapane").querySelector(".ii").innerHTML=ic("ia",17);
 $("#iabtn").onclick=()=>{$("#iapane").classList.contains("on")?fechaIA():abreIA()};
@@ -4757,7 +5693,8 @@ $("#btnTema").onclick=()=>{
  carrega();carregaSessao();
  (S.cartoesUsuario||[]).forEach(c=>{if(!FCS.some(f=>f.id===c.id)){FCS.push(c);(FPORNO[c.no]=FPORNO[c.no]||[]).push(c)}});
  aplicaTema();montaNav();recalcTudo();
- try{pontoDoDia()}catch(e){}                 // ponto de restauração do dia, antes de qualquer mudança
+ try{pontoDoDia()}catch(e){}
+ try{reconciliaCrono();pintaCrono()}catch(e){}                 // ponto de restauração do dia, antes de qualquer mudança
  try{migracaoPlano()}catch(e){relatarErro(e,"migracao")}
  roteia();
  try{window.__prontoEm=Math.round(performance.now())}catch(e){}
