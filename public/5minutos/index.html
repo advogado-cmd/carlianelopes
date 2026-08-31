@@ -121,6 +121,18 @@
     padding:14px 18px;font-size:14px;margin:0 0 22px;}
   .draft-recovered button{margin-left:6px;}
 
+  /* gravacao da propria voz */
+  .rec{margin-top:14px;padding:14px 16px;border:1px dashed var(--line);border-radius:6px;background:var(--surface);}
+  .rec-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+  .rec-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;}
+  .rec-state{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .rec-btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .rec.gravando{border-style:solid;border-color:var(--err);}
+  .rec.gravando .rec-state{color:var(--err);font-weight:700;}
+  .rec-warn{font-size:13px;color:var(--err);margin:10px 0 0;}
+  .voice-toggle{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;color:var(--muted);margin:16px 0 0;}
+  .voice-toggle input{accent-color:var(--accent-ink);}
+
   /* impressao / PDF */
   .print-only{display:none;}
   @media print{
@@ -128,7 +140,7 @@
     body{background:#fff;color:#14202b;font-size:11pt;}
     .wrap{max-width:none;padding:0;}
     .print-only{display:block;}
-    .no-print,.topbar-actions,.timer,#viewAuth,#viewWizard{display:none !important;}
+    .no-print,.topbar-actions,.timer,.rec,#viewAuth,#viewWizard{display:none !important;}
     h1{font-size:22pt;margin-bottom:2pt;}
     h2{font-size:14pt;margin-top:18pt;page-break-after:avoid;}
     .minuto{page-break-inside:avoid;border-bottom:1px solid #d8d2c4;}
@@ -273,10 +285,13 @@
       <button class="btn primary" id="tStart">Iniciar</button>
       <button class="btn" id="tReset">Reiniciar</button>
     </div>
+    <label class="voice-toggle" id="voiceToggle" hidden>
+      <input type="checkbox" id="voiceOn" checked> Tocar minha voz em cada minuto
+    </label>
   </section>
 
   <h2>O ritual, minuto a minuto</h2>
-  <p class="h2sub">Tudo acontece mentalmente, de olhos fechados.</p>
+  <p class="h2sub">Tudo acontece mentalmente, de olhos fechados. <span class="no-print">Você pode gravar sua própria voz lendo cada roteiro — ouvir a si mesmo declarando é o que fecha o circuito com o inconsciente. As gravações tocam sozinhas no modo guiado.</span></p>
   <hr class="rule">
 
   <div class="minuto">
@@ -286,6 +301,17 @@
       <p class="m-tag">0:00 – 1:00</p>
       <p>Agradeça mentalmente, item por item, começando pelo que já existe e terminando pelo que ainda está a caminho.</p>
       <div class="roteiro"><span class="r-label">Seu roteiro</span><div id="rGrat"></div></div>
+      <div class="rec no-print" data-phase="0" hidden>
+        <div class="rec-top"><span class="rec-label">Sua voz no minuto 1</span><span class="rec-state"></span></div>
+        <div class="rec-btns">
+          <button class="btn small rec-go" type="button">Gravar minha voz</button>
+          <button class="btn small rec-stop" type="button" hidden>Parar</button>
+          <button class="btn small rec-play" type="button" hidden>Ouvir</button>
+          <button class="btn small rec-again" type="button" hidden>Regravar</button>
+          <button class="linklike rec-del" type="button" hidden>apagar</button>
+        </div>
+        <p class="rec-warn" hidden>Você editou este roteiro depois de gravar — vale regravar.</p>
+      </div>
     </div>
   </div>
 
@@ -296,6 +322,17 @@
       <p class="m-tag">1:00 – 2:00</p>
       <p>Crie um filme mental vívido da vida que você está construindo — como realidade presente. O essencial são as <em>emoções</em>.</p>
       <div class="roteiro"><span class="r-label" id="rCenasLabel">Suas cenas</span><div id="rCenas"></div></div>
+      <div class="rec no-print" data-phase="1" hidden>
+        <div class="rec-top"><span class="rec-label">Sua voz no minuto 2</span><span class="rec-state"></span></div>
+        <div class="rec-btns">
+          <button class="btn small rec-go" type="button">Gravar minha voz</button>
+          <button class="btn small rec-stop" type="button" hidden>Parar</button>
+          <button class="btn small rec-play" type="button" hidden>Ouvir</button>
+          <button class="btn small rec-again" type="button" hidden>Regravar</button>
+          <button class="linklike rec-del" type="button" hidden>apagar</button>
+        </div>
+        <p class="rec-warn" hidden>Você editou este roteiro depois de gravar — vale regravar.</p>
+      </div>
     </div>
   </div>
 
@@ -312,6 +349,17 @@
         <p>Eu mereço prosperidade. O universo conspira a meu favor, e cada dia fico mais rico, mais sábio e mais saudável.</p>
       </div>
       <div class="roteiro" id="rAffBox"><span class="r-label">Suas declarações</span><div id="rAff"></div></div>
+      <div class="rec no-print" data-phase="2" hidden>
+        <div class="rec-top"><span class="rec-label">Sua voz no minuto 3</span><span class="rec-state"></span></div>
+        <div class="rec-btns">
+          <button class="btn small rec-go" type="button">Gravar minha voz</button>
+          <button class="btn small rec-stop" type="button" hidden>Parar</button>
+          <button class="btn small rec-play" type="button" hidden>Ouvir</button>
+          <button class="btn small rec-again" type="button" hidden>Regravar</button>
+          <button class="linklike rec-del" type="button" hidden>apagar</button>
+        </div>
+        <p class="rec-warn" hidden>Você editou este roteiro depois de gravar — vale regravar.</p>
+      </div>
     </div>
   </div>
 
@@ -322,6 +370,17 @@
       <p class="m-tag">3:00 – 4:00</p>
       <p>Conecte-se com o seu porquê mais profundo. A missão que a prosperidade financia. Visualize o impacto que ela gera.</p>
       <div class="roteiro"><span class="r-label">Seu porquê</span><div id="rPurpose"></div></div>
+      <div class="rec no-print" data-phase="3" hidden>
+        <div class="rec-top"><span class="rec-label">Sua voz no minuto 4</span><span class="rec-state"></span></div>
+        <div class="rec-btns">
+          <button class="btn small rec-go" type="button">Gravar minha voz</button>
+          <button class="btn small rec-stop" type="button" hidden>Parar</button>
+          <button class="btn small rec-play" type="button" hidden>Ouvir</button>
+          <button class="btn small rec-again" type="button" hidden>Regravar</button>
+          <button class="linklike rec-del" type="button" hidden>apagar</button>
+        </div>
+        <p class="rec-warn" hidden>Você editou este roteiro depois de gravar — vale regravar.</p>
+      </div>
     </div>
   </div>
 
@@ -337,6 +396,17 @@
         <li>solte a necessidade de controlar o como.</li>
       </ol>
       <div class="roteiro"><span class="r-label">Declaração final</span><p>Eu confio. Eu entrego. Tudo está se desdobrando perfeitamente. Está feito.</p></div>
+      <div class="rec no-print" data-phase="4" hidden>
+        <div class="rec-top"><span class="rec-label">Sua voz no minuto 5</span><span class="rec-state"></span></div>
+        <div class="rec-btns">
+          <button class="btn small rec-go" type="button">Gravar minha voz</button>
+          <button class="btn small rec-stop" type="button" hidden>Parar</button>
+          <button class="btn small rec-play" type="button" hidden>Ouvir</button>
+          <button class="btn small rec-again" type="button" hidden>Regravar</button>
+          <button class="linklike rec-del" type="button" hidden>apagar</button>
+        </div>
+        <p class="rec-warn" hidden>Você editou este roteiro depois de gravar — vale regravar.</p>
+      </div>
       <p class="porque">Então abra os olhos e levante-se — sem checar o celular ainda, se puder.</p>
     </div>
   </div>
@@ -645,6 +715,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(!p.name){ $("wizardMsg").textContent = "Diga como você quer ser chamado."; return; }
     if(!scenes.length){ $("wizardMsg").textContent = "Adicione pelo menos um objetivo."; return; }
     data.profile = p;
+    data.profileAt = Date.now();
     delete data.draft;
     inWizard = false;
     clearTimeout(draftTimer);
@@ -704,9 +775,181 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     $("rAff").innerHTML = hasAff ? paras(p.affirmations.join("\n")) : "";
     $("rPurpose").innerHTML = paras(p.purpose);
     phases = phasesFor(p);
+    renderRecs();
     resetTimer();
     renderGrid();
     panelHide();
+  }
+
+  /* ==========================================================
+     A VOZ DA PRÓPRIA PESSOA
+
+     Ela grava a si mesma lendo cada roteiro e o modo guiado toca a
+     gravação no minuto correspondente. Os arquivos vão para um bucket
+     privado do Supabase, numa pasta por usuário — mesmo isolamento do
+     resto: ninguém alcança o áudio de outra pessoa.
+     ========================================================== */
+  var MAXREC = 100;                  /* segundos por gravação */
+  var recorder = null, recPhase = -1, recTimer = null, recSecs = 0, recChunks = [];
+  var voiceUrl = {};                 /* fase -> objectURL já baixado */
+  var player = new Audio();
+
+  function voiceMeta(){ if(!data.voice) data.voice = {}; return data.voice; }
+  function pickMime(){
+    var c = ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/aac"];
+    for(var i=0;i<c.length;i++){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported(c[i])){
+        return {mime:c[i], ext:(c[i].indexOf("mp4")>=0||c[i].indexOf("aac")>=0) ? "m4a" : "webm"};
+      }
+    }
+    return null;
+  }
+  function recBox(i){ return document.querySelector('.rec[data-phase="'+i+'"]'); }
+  function fmtSecs(n){ var m=Math.floor(n/60), r=n%60; return m+":"+(r<10?"0":"")+r; }
+
+  /** Reflete na tela o que existe gravado, e avisa se o roteiro mudou depois. */
+  function renderRecs(){
+    var v = voiceMeta(), suportado = !!(navigator.mediaDevices && window.MediaRecorder && pickMime());
+    var algum = false;
+    for(let i=0;i<5;i++){
+      var box = recBox(i); if(!box) continue;
+      box.hidden = !suportado;
+      if(!suportado) continue;
+      var m = v[i], tem = !!(m && m.path);
+      if(tem) algum = true;
+      box.querySelector(".rec-go").hidden    = tem;
+      box.querySelector(".rec-play").hidden  = !tem;
+      box.querySelector(".rec-again").hidden = !tem;
+      box.querySelector(".rec-del").hidden   = !tem;
+      box.querySelector(".rec-stop").hidden  = true;
+      box.querySelector(".rec-state").textContent = tem ? ("gravado · " + fmtSecs(m.secs||0)) : "sem gravação";
+      var velha = tem && data.profileAt && m.at && m.at < data.profileAt;
+      box.querySelector(".rec-warn").hidden = !velha;
+    }
+    $("voiceToggle").hidden = !algum;
+  }
+
+  function recState(i, txt){ var b = recBox(i); if(b) b.querySelector(".rec-state").textContent = txt; }
+
+  function startRec(i){
+    var esc = pickMime();
+    if(!esc){ recState(i, "seu navegador não grava áudio"); return; }
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+      recChunks = []; recSecs = 0; recPhase = i;
+      recorder = new MediaRecorder(stream, esc.mime ? {mimeType:esc.mime} : undefined);
+      recorder.ondataavailable = function(e){ if(e.data && e.data.size) recChunks.push(e.data); };
+      recorder.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        clearInterval(recTimer);
+        var box = recBox(i); if(box) box.classList.remove("gravando");
+        var blob = new Blob(recChunks, {type: esc.mime || "audio/webm"});
+        uploadVoice(i, blob, esc.ext, recSecs);
+        recorder = null; recPhase = -1;
+      };
+      recorder.start();
+      var box = recBox(i);
+      box.classList.add("gravando");
+      box.querySelector(".rec-go").hidden = true;
+      box.querySelector(".rec-again").hidden = true;
+      box.querySelector(".rec-play").hidden = true;
+      box.querySelector(".rec-del").hidden = true;
+      box.querySelector(".rec-stop").hidden = false;
+      recState(i, "gravando… 0:00");
+      recTimer = setInterval(function(){
+        recSecs++;
+        recState(i, "gravando… " + fmtSecs(recSecs) + " / " + fmtSecs(MAXREC));
+        if(recSecs >= MAXREC) stopRec();
+      }, 1000);
+    }).catch(function(){
+      recState(i, "não conseguimos acessar o microfone — verifique a permissão");
+    });
+  }
+  function stopRec(){ if(recorder && recorder.state !== "inactive") recorder.stop(); }
+
+  function uploadVoice(i, blob, ext, secs){
+    if(!user){ return; }
+    var path = user.id + "/minuto-" + (i+1) + "." + ext;
+    recState(i, "salvando…");
+    sb.storage.from("vozes").upload(path, blob, {upsert:true, contentType: blob.type || "audio/webm"})
+      .then(function(r){
+        if(r.error){ recState(i, "não foi possível salvar — tente de novo"); return; }
+        if(voiceUrl[i]){ URL.revokeObjectURL(voiceUrl[i]); delete voiceUrl[i]; }
+        voiceMeta()[i] = {path:path, secs:secs, at:Date.now()};
+        voiceUrl[i] = URL.createObjectURL(blob);
+        renderRecs();
+        touch();
+      });
+  }
+
+  /** Baixa o áudio da conta (autenticado) e devolve um endereço tocável. */
+  function voiceSrc(i){
+    if(voiceUrl[i]) return Promise.resolve(voiceUrl[i]);
+    var m = voiceMeta()[i];
+    if(!m || !m.path) return Promise.resolve(null);
+    return sb.storage.from("vozes").download(m.path).then(function(r){
+      if(r.error || !r.data) return null;
+      voiceUrl[i] = URL.createObjectURL(r.data);
+      return voiceUrl[i];
+    }).catch(function(){ return null; });
+  }
+
+  function deleteVoice(i){
+    var m = voiceMeta()[i];
+    if(!m || !m.path) return;
+    recState(i, "apagando…");
+    sb.storage.from("vozes").remove([m.path]).then(function(){
+      if(voiceUrl[i]){ URL.revokeObjectURL(voiceUrl[i]); delete voiceUrl[i]; }
+      delete voiceMeta()[i];
+      renderRecs();
+      touch();
+    });
+  }
+
+  /* liga os botões dos cinco blocos */
+  for(let i=0;i<5;i++){
+    let box = recBox(i); if(!box) continue;
+    box.querySelector(".rec-go").addEventListener("click", function(){ startRec(i); });
+    box.querySelector(".rec-again").addEventListener("click", function(){ startRec(i); });
+    box.querySelector(".rec-stop").addEventListener("click", stopRec);
+    box.querySelector(".rec-del").addEventListener("click", function(){ deleteVoice(i); });
+    box.querySelector(".rec-play").addEventListener("click", function(){
+      voiceSrc(i).then(function(u){
+        if(!u){ recState(i, "não foi possível abrir a gravação"); return; }
+        player.pause(); player.src = u; player.play();
+      });
+    });
+  }
+
+  /**
+   * O celular só deixa tocar áudio que nasceu de um toque. Como a voz de
+   * cada minuto entra sozinha, no meio do cronômetro, destravamos o player
+   * no clique em "Iniciar" com um silêncio de zero segundo — e já baixamos
+   * as gravações, para o minuto virar sem espera.
+   */
+  var vozLiberada = false;
+  var SILENCIO = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+  function liberarVoz(){
+    if(vozLiberada) return;
+    vozLiberada = true;
+    try{
+      player.src = SILENCIO;
+      var pr = player.play();
+      if(pr && pr.catch) pr.catch(function(){});
+    }catch(e){}
+    var v = voiceMeta();
+    for(var k in v){ if(v[k] && v[k].path) voiceSrc(parseInt(k,10)); }
+  }
+
+  function pararVoz(){ try{ player.pause(); }catch(e){} }
+  function tocarVoz(i){
+    if(!$("voiceOn").checked) return;
+    voiceSrc(i).then(function(u){
+      if(!u) return;
+      try{ player.pause(); player.currentTime = 0; }catch(e){}
+      player.src = u;
+      var pr = player.play();
+      if(pr && pr.catch) pr.catch(function(){});
+    });
   }
 
   /* ---------- meditação guiada ---------- */
@@ -718,6 +961,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(elapsed >= TOTAL){
       $("tPhase").textContent = "Concluído";
       $("tCue").innerHTML = "<p>Abra os olhos. O dia começa programado por você.</p>";
+      if(shownPhase !== 99) pararVoz();
       shownPhase = 99; return;
     }
     var idx = 0;
@@ -727,9 +971,10 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       $("tPhase").textContent = phases[idx].name;
       $("tCue").innerHTML = phases[idx].html || "<p>(sem roteiro — edite suas respostas)</p>";
       $("tCue").scrollTop = 0;
+      tocarVoz(idx);
     }
   }
-  function stopTimer(){ running=false; clearInterval(iv); $("tStart").textContent="Iniciar"; }
+  function stopTimer(){ running=false; clearInterval(iv); $("tStart").textContent="Iniciar"; pararVoz(); }
   function resetTimer(){
     stopTimer(); elapsed = 0; shownPhase = -1;
     $("tPhase").textContent="Pronto para começar";
@@ -737,6 +982,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     $("tClock").textContent=fmt(TOTAL); $("tFill").style.width="0%";
   }
   $("tStart").addEventListener("click", function(){
+    liberarVoz();
     if(running){ stopTimer(); $("tStart").textContent="Continuar"; return; }
     if(elapsed >= TOTAL){ elapsed = 0; shownPhase = -1; }
     running = true; $("tStart").textContent = "Pausar";
