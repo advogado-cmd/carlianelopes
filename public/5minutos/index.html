@@ -395,7 +395,7 @@
   <section class="timer" aria-label="Meditação guiada">
     <div class="t-top">
       <div class="t-phase-row"><span id="tIco"></span><p class="t-phase" id="tPhase">Pronto para começar</p></div>
-      <p class="t-clock" id="tClock">5:00</p>
+      <p class="t-clock" id="tClock">0:00</p>
     </div>
     <div class="t-cue" id="tCue"></div>
     <div class="t-bar"><div class="t-fill" id="tFill"></div></div>
@@ -408,12 +408,12 @@
       <input type="checkbox" id="voiceOn" checked> Tocar minha voz em cada minuto
     </label>
     <label class="voice-toggle">
-      <input type="checkbox" id="bellOn" checked> Sino suave na virada de cada minuto
+      <input type="checkbox" id="bellOn" checked> Sino suave na passagem de uma seção para a outra
     </label>
     <div class="t-btns" style="margin-top:16px">
       <button class="btn" id="btnBaixar">Baixar a meditação completa</button>
     </div>
-    <p class="t-note" id="baixarMsg">Um áudio com a sua voz e os sinos, para ouvir no celular sem abrir o site.</p>
+    <p class="t-note" id="baixarMsg">Um áudio com a sua voz e os sinos, na mesma sequência, para ouvir no celular sem abrir o site.</p>
   </section>
 
   <h2>O ritual, minuto a minuto</h2>
@@ -926,7 +926,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     '<svg class="ico ico-3" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h3l4 3V6L8 9H5Z"/><path d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg>',
     '<svg class="ico ico-4" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
     '<svg class="ico ico-5" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v7"/><path d="M9 6l3-3 3 3"/><path d="M4 14a8 8 0 0 0 16 0"/><path d="M4 14v-2"/><path d="M20 14v-2"/></svg>'];
-  var READY_HTML = "<p>Deitado, confortável, olhos fechados. Toque em iniciar — o roteiro de cada minuto aparece aqui conforme o tempo passa. Use também para treinar na noite anterior.</p>";
+  var READY_HTML = "<p>Deitado, confortável, olhos fechados. Toque em iniciar — o roteiro de cada seção aparece aqui, um sino marca cada passagem, e sua voz entra em seguida. Se você gravou falas mais longas, o ritual acompanha: cada seção dura o tempo da sua fala, nunca menos que um minuto.</p>";
 
   function scenesHtml(p){
     return (p.scenes||[]).map(function(s){
@@ -1141,6 +1141,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     }catch(e){}
   }
 
+  var vozTimer = null;
   var vozLiberada = false;
   var SILENCIO = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
   function liberarVoz(){
@@ -1164,6 +1165,12 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   function vozTocando(){
     try{ return !player.paused && !player.ended && player.currentTime > 0; }
     catch(e){ return false; }
+  }
+  /** A voz desta seção existe e ainda vai entrar, depois do sino. */
+  function vozPendente(){
+    if(vozTimer === null) return false;
+    var m = voiceMeta()[shownPhase];
+    return !!(m && m.path) && !vozTocando() && !player.ended;
   }
   function tocarVoz(i){
     if(!$("voiceOn").checked) return;
@@ -1237,7 +1244,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       for(var i=0;i<5;i++){
         var t = Math.max(i * 60, fim);
         inicios.push(t);
-        var d = buffers[i] ? buffers[i].duration + 1.5 : 0;
+        var d = buffers[i] ? buffers[i].duration + 2.6 : 0;
         fim = t + Math.max(60, d);
       }
       var duracao = Math.max(TOTAL_SEG, Math.ceil(fim + 5));
@@ -1251,8 +1258,8 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
         var g = ctx.createGain();
         g.gain.value = 1;
         src.connect(g); g.connect(ctx.destination);
-        /* a voz entra 1,5s depois do sino, para não pisar nele */
-        src.start(inicios[i] + 1.5);
+        /* a voz entra depois que o sino se dissipa, nunca por cima dele */
+        src.start(inicios[i] + 2.6);
       }
       sinoOffline(ctx, duracao - 4.5, true);
       return ctx.startRendering();
@@ -1303,11 +1310,15 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   var TOTAL = 300, elapsed = 0, running = false, iv = null, shownPhase = -1;
   function fmt(s){ var m=Math.floor(s/60), r=s%60; return m+":"+(r<10?"0":"")+r; }
   function renderTimer(){
-    $("tClock").textContent = fmt(TOTAL - elapsed);
-    $("tFill").style.width = (elapsed/TOTAL*100)+"%";
+    /* conta para cima, não para baixo: com a fala livre o ritual pode passar
+       ou não chegar aos cinco minutos, e uma contagem regressiva que trava na
+       virada pareceria defeito */
+    $("tClock").textContent = fmt(elapsed);
+    $("tFill").style.width = Math.min(100, elapsed/TOTAL*100)+"%";
     if(elapsed >= TOTAL){
       $("tPhase").textContent = "Concluído";
-      $("tCue").innerHTML = "<p>Abra os olhos. O dia começa programado por você.</p>";
+      $("tCue").innerHTML = "<p>Abra os olhos. O dia começa programado por você.</p>" +
+        "<p style=\"color:var(--muted);font-size:14px\">Duração de hoje: " + fmt(elapsed) + ".</p>";
       if(shownPhase !== 99){ pararVoz(); sino(true); }
       shownPhase = 99; return;
     }
@@ -1319,17 +1330,24 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       $("tIco").innerHTML = ICONES[idx] || "";
       $("tCue").innerHTML = phases[idx].html || "<p>(sem roteiro — edite suas respostas)</p>";
       $("tCue").scrollTop = 0;
+      /* o sino marca a passagem: soa sozinho, e só quando ele se dissipa
+         a voz da nova seção entra — nunca por cima dela */
       sino(false);
-      tocarVoz(idx);
+      clearTimeout(vozTimer);
+      var estaFase = idx;
+      vozTimer = setTimeout(function(){ tocarVoz(estaFase); }, 2600);
     }
   }
-  function stopTimer(){ running=false; clearInterval(iv); $("tStart").textContent="Iniciar"; pararVoz(); }
+  function stopTimer(){
+    running=false; clearInterval(iv); clearTimeout(vozTimer);
+    $("tStart").textContent="Iniciar"; pararVoz();
+  }
   function resetTimer(){
     stopTimer(); elapsed = 0; shownPhase = -1;
     $("tPhase").textContent="Pronto para começar";
     $("tIco").innerHTML = "";
     $("tCue").innerHTML = READY_HTML;
-    $("tClock").textContent=fmt(TOTAL); $("tFill").style.width="0%";
+    $("tClock").textContent=fmt(0); $("tFill").style.width="0%";
   }
   $("tStart").addEventListener("click", function(){
     liberarVoz();
@@ -1340,7 +1358,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       var proximo = elapsed + 1;
       /* na virada do minuto, se a gravação ainda corre, o relógio espera —
          quem grava mais de um minuto não é interrompido */
-      if(proximo % 60 === 0 && vozTocando()){ renderTimer(); return; }
+      if(proximo % 60 === 0 && (vozTocando() || vozPendente())){ renderTimer(); return; }
       elapsed = proximo;
       if(elapsed >= TOTAL){ stopTimer(); elapsed = TOTAL; }
       renderTimer();
