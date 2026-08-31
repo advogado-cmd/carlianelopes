@@ -413,11 +413,11 @@
     <div class="t-btns" style="margin-top:16px">
       <button class="btn" id="btnBaixar">Baixar a meditação completa</button>
     </div>
-    <p class="t-note" id="baixarMsg">Um áudio de 5 minutos com a sua voz e os sinos, para ouvir no celular sem abrir o site.</p>
+    <p class="t-note" id="baixarMsg">Um áudio com a sua voz e os sinos, para ouvir no celular sem abrir o site.</p>
   </section>
 
   <h2>O ritual, minuto a minuto</h2>
-  <p class="h2sub">Tudo acontece mentalmente, de olhos fechados. <span class="no-print">Você pode gravar sua própria voz lendo cada roteiro — ouvir a si mesmo declarando é o que fecha o circuito com o inconsciente. As gravações tocam sozinhas no modo guiado.</span></p>
+  <p class="h2sub">Tudo acontece mentalmente, de olhos fechados. <span class="no-print">Você pode gravar sua própria voz lendo cada roteiro — ouvir a si mesmo declarando é o que fecha o circuito com o inconsciente. As gravações tocam sozinhas no modo guiado, e fale à vontade: se passar de um minuto, o guia espera você terminar.</span></p>
   <hr class="rule">
 
   <div class="minuto">
@@ -972,7 +972,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
      privado do Supabase, numa pasta por usuário — mesmo isolamento do
      resto: ninguém alcança o áudio de outra pessoa.
      ========================================================== */
-  var MAXREC = 100;                  /* segundos por gravação */
+  var MAXREC = 600;                  /* teto de segurança; a fala manda, não o relógio */
   var recorder = null, recPhase = -1, recTimer = null, recSecs = 0, recChunks = [];
   var voiceUrl = {};                 /* fase -> objectURL já baixado */
   var player = new Audio();
@@ -1005,7 +1005,9 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       box.querySelector(".rec-again").hidden = !tem;
       box.querySelector(".rec-del").hidden   = !tem;
       box.querySelector(".rec-stop").hidden  = true;
-      box.querySelector(".rec-state").textContent = tem ? ("gravado · " + fmtSecs(m.secs||0)) : "sem gravação";
+      box.querySelector(".rec-state").textContent = tem
+        ? ("gravado · " + fmtSecs(m.secs||0) + ((m.secs||0) > 60 ? " (o minuto se estende)" : ""))
+        : "sem gravação";
       var velha = tem && data.profileAt && m.at && m.at < data.profileAt;
       box.querySelector(".rec-warn").hidden = !velha;
     }
@@ -1040,7 +1042,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       recState(i, "gravando… 0:00");
       recTimer = setInterval(function(){
         recSecs++;
-        recState(i, "gravando… " + fmtSecs(recSecs) + " / " + fmtSecs(MAXREC));
+        recState(i, "gravando… " + fmtSecs(recSecs) + (recSecs > 60 ? " · o guia vai esperar você terminar" : ""));
         if(recSecs >= MAXREC) stopRec();
       }, 1000);
     }).catch(function(){
@@ -1158,6 +1160,11 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   }
 
   function pararVoz(){ try{ player.pause(); }catch(e){} }
+  /** A fala é que manda: enquanto a voz do minuto corre, o relógio segura. */
+  function vozTocando(){
+    try{ return !player.paused && !player.ended && player.currentTime > 0; }
+    catch(e){ return false; }
+  }
   function tocarVoz(i){
     if(!$("voiceOn").checked) return;
     voiceSrc(i).then(function(u){
@@ -1224,9 +1231,19 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
 
     Promise.all(tarefas).then(function(buffers){
       baixarMsg("Montando os cinco minutos…");
-      var ctx = new OAC(1, TOTAL_SEG * TAXA, TAXA);
+      /* cada minuto começa no seu segundo, ou quando a fala anterior acabar —
+         o arquivo cresce se as gravações forem mais longas que um minuto */
+      var inicios = [], fim = 0;
       for(var i=0;i<5;i++){
-        sinoOffline(ctx, i * 60, false);
+        var t = Math.max(i * 60, fim);
+        inicios.push(t);
+        var d = buffers[i] ? buffers[i].duration + 1.5 : 0;
+        fim = t + Math.max(60, d);
+      }
+      var duracao = Math.max(TOTAL_SEG, Math.ceil(fim + 5));
+      var ctx = new OAC(1, duracao * TAXA, TAXA);
+      for(var i=0;i<5;i++){
+        sinoOffline(ctx, inicios[i], false);
         var buf = buffers[i];
         if(!buf) continue;
         var src = ctx.createBufferSource();
@@ -1235,9 +1252,9 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
         g.gain.value = 1;
         src.connect(g); g.connect(ctx.destination);
         /* a voz entra 1,5s depois do sino, para não pisar nele */
-        src.start(Math.min(i * 60 + 1.5, TOTAL_SEG - 0.1));
+        src.start(inicios[i] + 1.5);
       }
-      sinoOffline(ctx, TOTAL_SEG - 4.5, true);
+      sinoOffline(ctx, duracao - 4.5, true);
       return ctx.startRendering();
     }).then(function(render){
       baixarMsg("Convertendo para MP3… 0%");
@@ -1320,7 +1337,11 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(elapsed >= TOTAL){ elapsed = 0; shownPhase = -1; }
     running = true; $("tStart").textContent = "Pausar";
     iv = setInterval(function(){
-      elapsed++;
+      var proximo = elapsed + 1;
+      /* na virada do minuto, se a gravação ainda corre, o relógio espera —
+         quem grava mais de um minuto não é interrompido */
+      if(proximo % 60 === 0 && vozTocando()){ renderTimer(); return; }
+      elapsed = proximo;
       if(elapsed >= TOTAL){ stopTimer(); elapsed = TOTAL; }
       renderTimer();
     }, 1000);
