@@ -27,12 +27,33 @@ const REDIRECTS: Record<string, string> = {
 /** Nunca existiram como página. 410 encerra o assunto. */
 const GONE = new Set(["constelacao-sistemica", "saude-mental-corporativa"])
 
+/**
+ * Subdomínio 5minutos.carlianelopes.com.br
+ *
+ * O Protocolo dos 5 Minutos é uma página estática autocontida em
+ * public/5minutos/. O subdomínio aponta para este mesmo projeto na Vercel,
+ * então aqui reescrevemos a raiz daquele host para o arquivo — a URL que a
+ * pessoa vê continua sendo 5minutos.carlianelopes.com.br/.
+ */
+const PROTOCOLO_HOST = "5minutos."
+const PROTOCOLO_FILE = "/5minutos/index.html"
+
 function normalize(pathname: string): string {
   const withoutTrailing = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname
   return withoutTrailing.replace(/^\/blog\//, "/").replace(/\/feed$/, "")
 }
 
 export function middleware(request: NextRequest) {
+  const host = request.headers.get("host") ?? ""
+
+  if (host.startsWith(PROTOCOLO_HOST)) {
+    const path = request.nextUrl.pathname
+    if (path === "/" || path === "" || path === "/index.html") {
+      return NextResponse.rewrite(new URL(PROTOCOLO_FILE, request.url))
+    }
+    return NextResponse.next()
+  }
+
   const slug = normalize(request.nextUrl.pathname).replace(/^\//, "")
 
   if (REDIRECTS[slug]) {

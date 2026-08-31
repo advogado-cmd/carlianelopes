@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protocolo dos 5 Minutos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Serif:opsz,wght@8..144,300;8..144,400;8..144,500;8..144,600&family=Roboto:wght@400;500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F3EFE4; --surface:#FBF8F1; --surface-2:#ECE6D6;
+    --ink:#122B3C; --ink-strong:#082533; --muted:#5D6E77;
+    --accent:#CCAB76; --accent-ink:#8A6C33; --line:#DCD4C0;
+    --done:#5E7A54; --done-bg:#E4E9DC; --err:#9C3B2E;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#082533; --surface:#0D3040; --surface-2:#123A4C;
+      --ink:#E9E3D4; --ink-strong:#F5F0E3; --muted:#93A5AD;
+      --accent:#D8BC8B; --accent-ink:#D8BC8B; --line:#1C4558;
+      --done:#9DBA8F; --done-bg:#163A34; --err:#E08A7C;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--ink);font-family:"Roboto",system-ui,sans-serif;line-height:1.65;font-size:16px;margin:0;}
+  .wrap{max-width:680px;margin:0 auto;padding:40px 24px 80px;}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin:0 0 10px;}
+  h1{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:clamp(30px,5.5vw,40px);line-height:1.12;color:var(--ink-strong);margin:0;text-wrap:balance;}
+  h2{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:26px;color:var(--ink-strong);margin:64px 0 6px;text-wrap:balance;}
+  .h2sub{color:var(--muted);font-size:15px;margin:0 0 22px;}
+  .rule{border:none;border-top:1px solid var(--line);margin:0 0 22px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:26px;}
+  button.btn{font-family:"Roboto",sans-serif;font-weight:700;font-size:14px;letter-spacing:.04em;padding:11px 26px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-strong);}
+  button.btn.primary{background:var(--ink-strong);color:var(--bg);border-color:var(--ink-strong);}
+  @media (prefers-color-scheme: dark){button.btn.primary{background:var(--accent);color:#082533;border-color:var(--accent);}}
+  button.btn:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;}
+  button.btn.small{padding:8px 18px;font-size:13px;}
+  button.linklike{background:none;border:none;color:var(--accent-ink);cursor:pointer;font-size:13.5px;padding:0;text-decoration:underline;}
+  input[type=text],input[type=email],input[type=password],textarea{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;
+    padding:12px 14px;color:var(--ink);font-family:"Roboto",sans-serif;font-size:15px;
+  }
+  textarea{font-family:"Roboto Serif",Georgia,serif;line-height:1.6;resize:vertical;min-height:96px;}
+  input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-ink);outline-offset:1px;}
+  label.f{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;display:block;margin:18px 0 8px;}
+  .hint{font-size:13px;color:var(--muted);margin:6px 0 0;}
+  .msg{font-size:14px;margin:14px 0 0;min-height:20px;}
+  .msg.err{color:var(--err);}
+  .banner{background:var(--surface);border:1px solid var(--err);border-radius:6px;padding:14px 18px;font-size:14px;margin-bottom:24px;}
+  [hidden]{display:none !important;}
+
+  /* Auth */
+  .auth-box{max-width:420px;margin:8vh auto 0;}
+  .auth-actions{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;}
+  .auth-alt{margin-top:16px;}
+
+  /* Wizard */
+  .step-tag{font-family:"Roboto Serif",Georgia,serif;font-size:20px;color:var(--ink-strong);font-weight:500;margin:34px 0 4px;}
+  .cena-row{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--bg);margin-bottom:10px;}
+  .cena-row input{background:var(--surface);}
+  .cena-row textarea{background:var(--surface);min-height:70px;}
+  .cena-top{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .cena-top span{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+
+  /* Timer */
+  .timer{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:26px 26px 24px;margin-top:26px;}
+  .t-top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px;}
+  .t-phase{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin:0;}
+  .t-clock{font-weight:700;font-size:38px;color:var(--ink-strong);font-variant-numeric:tabular-nums;margin:0;line-height:1;}
+  .t-cue{font-family:"Roboto Serif",Georgia,serif;font-size:15.5px;color:var(--ink);line-height:1.7;margin:0 0 18px;max-height:300px;overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:16px 18px;}
+  .t-cue p{margin:0 0 10px;} .t-cue p:last-child{margin:0;} .t-cue strong{color:var(--ink-strong);}
+  .t-bar{height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:0 0 10px;}
+  .t-fill{height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width .5s linear;}
+  @media (prefers-reduced-motion: reduce){.t-fill{transition:none;}}
+  .t-marks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:20px;font-weight:500;gap:4px;flex-wrap:wrap;}
+  .t-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+
+  /* Minutos */
+  .minuto{display:grid;grid-template-columns:56px 1fr;gap:20px;padding:28px 0;border-bottom:1px solid var(--line);}
+  .minuto:last-of-type{border-bottom:none;}
+  .m-num{font-family:"Roboto Serif",Georgia,serif;font-size:34px;font-weight:300;color:var(--accent-ink);line-height:1;padding-top:2px;font-variant-numeric:tabular-nums;}
+  .m-body h3{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:20px;color:var(--ink-strong);margin:0 0 4px;}
+  .m-tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 12px;}
+  .m-body p{margin:0 0 12px;}
+  .m-body ol{margin:0 0 12px;padding-left:22px;}
+  .roteiro{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin:12px 0 0;}
+  .roteiro .r-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;display:block;margin-bottom:8px;}
+  .roteiro p{margin:0 0 10px;font-family:"Roboto Serif",Georgia,serif;font-size:15.5px;line-height:1.7;}
+  .roteiro p:last-child{margin-bottom:0;}
+  .porque{font-size:14px;color:var(--muted);margin-top:12px;}
+  ul.clean{list-style:none;padding:0;margin:0;}
+  ul.clean li{padding:14px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:22px 1fr;gap:14px;}
+  ul.clean li:last-child{border-bottom:none;}
+  ul.clean .dot{color:var(--accent-ink);font-weight:700;line-height:1.65;}
+
+  /* Tracker */
+  .grid30{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;margin:22px 0 14px;}
+  .day{aspect-ratio:1;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--muted);font-weight:500;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;padding:0;position:relative;}
+  .day:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;}
+  .day.done{background:var(--done-bg);border-color:var(--done);color:var(--done);font-weight:700;}
+  .day.sel{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-ink);}
+  .day .notedot{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent-ink);}
+  .streak{font-size:14px;color:var(--muted);margin:0 0 6px;}
+  .streak strong{color:var(--ink-strong);font-variant-numeric:tabular-nums;}
+  .tracker-note{font-size:13px;color:var(--muted);margin-top:8px;}
+  .daypanel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-top:22px;}
+  .dp-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .dp-title{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:20px;color:var(--ink-strong);margin:0;}
+  .save-status{font-size:13px;color:var(--muted);margin:10px 0 0;min-height:18px;}
+  .export-row{display:flex;gap:12px;align-items:center;margin-top:26px;flex-wrap:wrap;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;}
+  .topbar-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  footer{margin-top:72px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);}
+  footer a{color:var(--accent-ink);}
+  @media (max-width:480px){.minuto{grid-template-columns:40px 1fr;gap:14px;}.m-num{font-size:26px;}}
+</style>
+</head>
+<body>
+
+<!-- ============ PÁGINA DE ACESSO ============ -->
+<div class="wrap" id="viewAuth" hidden>
+  <p class="eyebrow">Ritual matinal · Princípios de Napoleon Hill</p>
+  <h1>Protocolo dos 5 Minutos</h1>
+  <p class="h2sub" style="margin-top:12px">Um ritual matinal de cinco minutos para programar sua mente para a prosperidade — personalizado com os seus objetivos, com meditação guiada e diário de 30 dias.</p>
+
+  <h2 style="margin-top:44px">A técnica</h2>
+  <hr class="rule">
+  <p>Napoleon Hill, autor de <em>Quem Pensa Enriquece</em>, passou mais de vinte anos estudando as pessoas mais bem-sucedidas de sua época. Encontrou um padrão: todas tinham domínio sobre a própria mente logo nos primeiros momentos do dia — todas começavam o dia com intenção.</p>
+  <p>O motivo é simples: ao despertar, o cérebro transita do sono profundo para a vigília e passa alguns minutos em um estado especialmente receptivo, semelhante ao alcançado em meditação profunda. Nesse intervalo, a barreira entre o consciente e o subconsciente está fina — é a janela ideal para escolher, deliberadamente, os pensamentos que vão dirigir o seu dia. A maioria das pessoas desperdiça essa janela pegando o celular e absorvendo notícias, mensagens e preocupações: sem perceber, programa a própria mente para a escassez. Este protocolo faz o contrário.</p>
+  <p>São cinco minutos, de olhos fechados, antes de se levantar — cinco movimentos, um por minuto:</p>
+
+  <ul class="clean" style="margin-bottom:8px">
+    <li><span class="dot">1</span><span><strong>Gratidão</strong> — agradeça pelo que já existe e, sobretudo, pelo que ainda está a caminho, como se já fosse seu.</span></li>
+    <li><span class="dot">2</span><span><strong>Visualização</strong> — crie um filme mental vívido dos seus objetivos realizados, sentindo as emoções da cena.</span></li>
+    <li><span class="dot">3</span><span><strong>Afirmações</strong> — declare, com convicção, quem você é e o que está construindo. Declarações, não pedidos.</span></li>
+    <li><span class="dot">4</span><span><strong>Propósito</strong> — conecte-se ao seu porquê mais profundo: a missão que a prosperidade financia.</span></li>
+    <li><span class="dot">5</span><span><strong>Entrega</strong> — três respirações profundas para soltar a ansiedade, o medo e a necessidade de controlar o como.</span></li>
+  </ul>
+
+  <p style="margin-top:22px">A repetição é o que consolida: o compromisso é praticar por <strong>30 dias seguidos</strong>, registrando o que muda pelo caminho. Ao responder algumas perguntas, você recebe o seu protocolo com roteiros escritos a partir dos seus próprios objetivos — para praticar todas as manhãs, com meditação guiada e diário incluídos.</p>
+
+  <div class="auth-box" style="margin-top:44px" id="authAnchor">
+    <div class="banner" id="cfgBanner" hidden>Configuração pendente: edite este arquivo e preencha SUPABASE_URL e SUPABASE_ANON_KEY no topo do script.</div>
+    <h2 style="margin:0 0 14px;font-size:22px">Crie seu acesso gratuito</h2>
+    <div class="card">
+      <div id="authForm">
+        <label class="f" for="authEmail">E-mail</label>
+        <input type="email" id="authEmail" autocomplete="email" placeholder="voce@exemplo.com">
+        <label class="f" for="authPass">Senha</label>
+        <input type="password" id="authPass" autocomplete="current-password" placeholder="mínimo 6 caracteres">
+        <div class="auth-actions">
+          <button class="btn primary" id="btnLogin">Entrar</button>
+          <button class="btn" id="btnSignup">Criar acesso</button>
+        </div>
+        <p class="auth-alt"><button class="linklike" id="btnForgot">Esqueci minha senha</button></p>
+      </div>
+      <div id="recoveryForm" hidden>
+        <label class="f" for="newPass">Nova senha</label>
+        <input type="password" id="newPass" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+        <div class="auth-actions"><button class="btn primary" id="btnSetPass">Salvar nova senha</button></div>
+      </div>
+      <p class="msg" id="authMsg"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PÁGINA DE PERGUNTAS ============ -->
+<div class="wrap" id="viewWizard" hidden>
+  <p class="eyebrow">Personalização</p>
+  <h1>Monte o seu protocolo</h1>
+  <p class="h2sub" style="margin-top:12px">Suas respostas viram os roteiros que você vai praticar todas as manhãs. Escreva no presente, como se já fosse realidade — você poderá editar tudo depois.</p>
+
+  <div class="card">
+    <p class="step-tag" style="margin-top:0">1 · Quem é você</p>
+    <label class="f" for="wName">Seu primeiro nome</label>
+    <input type="text" id="wName" placeholder="Como você quer ser chamado">
+
+    <p class="step-tag">2 · Gratidão</p>
+    <label class="f" for="wGratNow">Pelo que você agradece hoje?</label>
+    <textarea id="wGratNow" placeholder="Ex.: Agradeço por mais um dia de vida, pela minha família, pela minha saúde, pelo trabalho que construí…"></textarea>
+    <label class="f" for="wGratComing">E pelo que você agradece que ainda está a caminho?</label>
+    <textarea id="wGratComing" placeholder="Ex.: Agradeço pela riqueza que flui até mim, pelo meu negócio próspero, pelas oportunidades que este dia traz…"></textarea>
+    <p class="hint">Agradecer pelo que ainda não se manifestou é o coração do método.</p>
+
+    <p class="step-tag">3 · Seus objetivos (as cenas da visualização)</p>
+    <p class="hint" style="margin-bottom:12px">De 1 a 6 objetivos. Dê um título curto e descreva a cena como um filme: o que você vê, quem está lá, o que você sente.</p>
+    <div id="cenas"></div>
+    <button class="btn small" id="btnAddCena" type="button">+ Adicionar objetivo</button>
+
+    <p class="step-tag">4 · Suas afirmações</p>
+    <label class="f" for="wAff">Declarações pessoais — uma por linha</label>
+    <textarea id="wAff" placeholder="Ex.: Muito dinheiro flui para a minha conta, de múltiplas fontes.&#10;Meu negócio funciona próspero e cheio de clientes."></textarea>
+    <button class="btn small" id="btnSuggestAff" type="button" style="margin-top:10px">Sugerir a partir dos meus objetivos</button>
+    <p class="hint">As afirmações gerais do método (abundância, merecimento, prosperidade) já estão incluídas — estas são as suas específicas.</p>
+
+    <p class="step-tag">5 · Seu propósito</p>
+    <label class="f" for="wPurpose">Por que você busca prosperar? Qual o impacto que sua prosperidade gera?</label>
+    <textarea id="wPurpose" placeholder="Ex.: Vejo minha família segura e bem cuidada. Vejo as pessoas que meu trabalho alcança e transforma. Prosperar é um serviço que presto ao mundo."></textarea>
+
+    <div class="auth-actions" style="margin-top:30px">
+      <button class="btn primary" id="btnSaveWizard">Gerar meu protocolo</button>
+      <button class="btn" id="btnCancelWizard" hidden>Cancelar</button>
+    </div>
+    <p class="msg" id="wizardMsg"></p>
+  </div>
+</div>
+
+<!-- ============ O PROTOCOLO ============ -->
+<div class="wrap" id="viewApp" hidden>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Ritual matinal · Princípios de Napoleon Hill</p>
+      <h1 id="appTitle">Protocolo dos 5 Minutos</h1>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn small" id="btnEdit">Editar respostas</button>
+      <button class="btn small" id="btnLogout">Sair</button>
+    </div>
+  </header>
+
+  <section class="timer" aria-label="Meditação guiada">
+    <div class="t-top">
+      <p class="t-phase" id="tPhase">Pronto para começar</p>
+      <p class="t-clock" id="tClock">5:00</p>
+    </div>
+    <div class="t-cue" id="tCue"></div>
+    <div class="t-bar"><div class="t-fill" id="tFill"></div></div>
+    <div class="t-marks"><span>Gratidão</span><span>Visualização</span><span>Afirmações</span><span>Propósito</span><span>Entrega</span></div>
+    <div class="t-btns">
+      <button class="btn primary" id="tStart">Iniciar</button>
+      <button class="btn" id="tReset">Reiniciar</button>
+    </div>
+  </section>
+
+  <h2>O ritual, minuto a minuto</h2>
+  <p class="h2sub">Tudo acontece mentalmente, de olhos fechados.</p>
+  <hr class="rule">
+
+  <div class="minuto">
+    <div class="m-num">1</div>
+    <div class="m-body">
+      <h3>Gratidão</h3>
+      <p class="m-tag">0:00 – 1:00</p>
+      <p>Agradeça mentalmente, item por item, começando pelo que já existe e terminando pelo que ainda está a caminho.</p>
+      <div class="roteiro"><span class="r-label">Seu roteiro</span><div id="rGrat"></div></div>
+    </div>
+  </div>
+
+  <div class="minuto">
+    <div class="m-num">2</div>
+    <div class="m-body">
+      <h3>Visualização</h3>
+      <p class="m-tag">1:00 – 2:00</p>
+      <p>Crie um filme mental vívido da vida que você está construindo — como realidade presente. O essencial são as <em>emoções</em>.</p>
+      <div class="roteiro"><span class="r-label" id="rCenasLabel">Suas cenas</span><div id="rCenas"></div></div>
+    </div>
+  </div>
+
+  <div class="minuto">
+    <div class="m-num">3</div>
+    <div class="m-body">
+      <h3>Afirmações</h3>
+      <p class="m-tag">2:00 – 3:00</p>
+      <p>Declare mentalmente, com convicção. Não são pedidos — são declarações.</p>
+      <div class="roteiro">
+        <span class="r-label">Declarações gerais</span>
+        <p>Eu sou um canal aberto para a abundância infinita. Riqueza flui até mim de múltiplas fontes.</p>
+        <p>Eu sou próspero em todas as áreas da minha vida. Minha mente está sintonizada com a frequência da riqueza, e eu atraio oportunidades naturalmente.</p>
+        <p>Eu mereço prosperidade. O universo conspira a meu favor, e cada dia fico mais rico, mais sábio e mais saudável.</p>
+      </div>
+      <div class="roteiro" id="rAffBox"><span class="r-label">Suas declarações</span><div id="rAff"></div></div>
+    </div>
+  </div>
+
+  <div class="minuto">
+    <div class="m-num">4</div>
+    <div class="m-body">
+      <h3>Propósito</h3>
+      <p class="m-tag">3:00 – 4:00</p>
+      <p>Conecte-se com o seu porquê mais profundo. A missão que a prosperidade financia. Visualize o impacto que ela gera.</p>
+      <div class="roteiro"><span class="r-label">Seu porquê</span><div id="rPurpose"></div></div>
+    </div>
+  </div>
+
+  <div class="minuto">
+    <div class="m-num">5</div>
+    <div class="m-body">
+      <h3>Entrega</h3>
+      <p class="m-tag">4:00 – 5:00</p>
+      <p>Três respirações profundas:</p>
+      <ol>
+        <li>solte a ansiedade sobre dinheiro</li>
+        <li>solte o medo de escassez</li>
+        <li>solte a necessidade de controlar o como.</li>
+      </ol>
+      <div class="roteiro"><span class="r-label">Declaração final</span><p>Eu confio. Eu entrego. Tudo está se desdobrando perfeitamente. Está feito.</p></div>
+      <p class="porque">Então abra os olhos e levante-se — sem checar o celular ainda, se puder.</p>
+    </div>
+  </div>
+
+  <h2>Durante o dia</h2>
+  <p class="h2sub">A programação da manhã se desfaz se o dia inteiro trabalhar contra ela. Três reforços:</p>
+  <ul class="clean">
+    <li><span class="dot">↻</span><span>Nos momentos vazios — trânsito, espera, fila — revisite mentalmente a visualização e repita uma afirmação. Trinta segundos bastam.</span></li>
+    <li><span class="dot">⚖</span><span>Quando algo desafiador aparecer, respire fundo e declare: <em>"Isso é temporário. Minha prosperidade é permanente."</em></span></li>
+    <li><span class="dot">✕</span><span>Quando a mente sabotar — <em>"isso é bobagem"</em> — não brigue com o pensamento. Reconheça que ele está ali e volte à gratidão.</span></li>
+  </ul>
+
+  <h2>Desafio de 30 dias</h2>
+  <p class="h2sub">Toque em um dia para marcar a manhã concluída e escrever o registro daquele dia. Tudo fica salvo na sua conta.</p>
+  <p class="streak">Manhãs concluídas: <strong id="doneCount">0</strong> de 30</p>
+  <div class="grid30" id="grid30"></div>
+  <p class="tracker-note">Faltou um dia? Não recomece do zero — apenas não falhe duas vezes seguidas.</p>
+
+  <div class="daypanel" id="dayPanel" hidden>
+    <div class="dp-top">
+      <p class="dp-title" id="dpTitle">Dia 1</p>
+      <button class="btn small" id="dpToggle">Marcar manhã como concluída</button>
+    </div>
+    <textarea id="dpNote" placeholder="Registro do dia — o que sentiu, o que mudou, o que aconteceu."></textarea>
+    <p class="save-status" id="saveStatus"></p>
+  </div>
+
+  <div class="export-row">
+    <button class="btn" id="btnExport">Exportar registros</button>
+  </div>
+
+  <footer>
+    <p>Protocolo inspirado nas ideias de Napoleon Hill (1883–1970). Prática de mentalidade e hábito — complementa, não substitui, planejamento e ação concretos.</p>
+  </footer>
+</div>
+
+<script>
+/* ==========================================================
+   CONFIGURAÇÃO — preencha com os dados do seu projeto Supabase
+   (Project Settings → API)
+   ========================================================== */
+var SUPABASE_URL = "https://boqkeuckgiqqrbgzynaf.supabase.co";
+var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
+
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function esc(s){
+    return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function paras(text){
+    return String(text||"").split(/\n+/).filter(function(l){return l.trim();})
+      .map(function(l){ return "<p>"+esc(l.trim())+"</p>"; }).join("");
+  }
+
+  var configured = SUPABASE_URL.indexOf("http") === 0;
+  var sb = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  var user = null;
+  var data = { profile:null, days:{} };
+  var saveTimer = null, selectedDay = null, recoveryMode = false;
+
+  /* ---------- navegação entre páginas ---------- */
+  function show(view){
+    ["viewAuth","viewWizard","viewApp"].forEach(function(v){ $(v).hidden = (v!==view); });
+    window.scrollTo(0,0);
+  }
+
+  /* ---------- ACESSO ---------- */
+  function authMsg(t, isErr){ var m=$("authMsg"); m.textContent=t||""; m.className="msg"+(isErr?" err":""); }
+
+  $("btnLogin").addEventListener("click", function(){
+    if(!sb){ authMsg("Configuração pendente (veja o aviso acima).", true); return; }
+    authMsg("Entrando…");
+    sb.auth.signInWithPassword({email:$("authEmail").value.trim(), password:$("authPass").value})
+      .then(function(r){
+        if(r.error){ authMsg(traduzErro(r.error.message), true); return; }
+        authMsg("");
+      });
+  });
+  $("btnSignup").addEventListener("click", function(){
+    if(!sb){ authMsg("Configuração pendente (veja o aviso acima).", true); return; }
+    var email = $("authEmail").value.trim(), pass = $("authPass").value;
+    if(!email || pass.length < 6){ authMsg("Informe e-mail e uma senha com pelo menos 6 caracteres.", true); return; }
+    authMsg("Criando acesso…");
+    sb.auth.signUp({email:email, password:pass}).then(function(r){
+      if(r.error){ authMsg(traduzErro(r.error.message), true); return; }
+      if(r.data && r.data.session){ authMsg(""); }
+      else { authMsg("Acesso criado! Verifique seu e-mail para confirmar o cadastro e depois entre."); }
+    });
+  });
+  $("btnForgot").addEventListener("click", function(){
+    if(!sb) return;
+    var email = $("authEmail").value.trim();
+    if(!email){ authMsg("Digite seu e-mail acima e clique de novo em \"Esqueci minha senha\".", true); return; }
+    sb.auth.resetPasswordForEmail(email, {redirectTo: window.location.href.split("#")[0]})
+      .then(function(r){
+        if(r.error){ authMsg(traduzErro(r.error.message), true); }
+        else { authMsg("Enviamos um link de recuperação para o seu e-mail."); }
+      });
+  });
+  $("btnSetPass").addEventListener("click", function(){
+    var p = $("newPass").value;
+    if(p.length < 6){ authMsg("A nova senha precisa de pelo menos 6 caracteres.", true); return; }
+    sb.auth.updateUser({password:p}).then(function(r){
+      if(r.error){ authMsg(traduzErro(r.error.message), true); return; }
+      recoveryMode = false;
+      $("recoveryForm").hidden = true; $("authForm").hidden = false;
+      authMsg("Senha atualizada!");
+      route();
+    });
+  });
+  function traduzErro(m){
+    m = String(m||"");
+    if(/invalid login credentials/i.test(m)) return "E-mail ou senha incorretos.";
+    if(/already registered/i.test(m)) return "Este e-mail já tem acesso — use \"Entrar\".";
+    if(/rate limit/i.test(m)) return "Muitas tentativas. Aguarde um pouco e tente de novo.";
+    if(/email not confirmed/i.test(m)) return "Confirme seu e-mail pelo link que enviamos antes de entrar.";
+    return "Não foi possível concluir: " + m;
+  }
+
+  /* ---------- DADOS ---------- */
+  function loadRemote(){
+    return sb.from("protocols").select("data").eq("user_id", user.id).maybeSingle()
+      .then(function(r){
+        if(r.error) throw r.error;
+        if(r.data && r.data.data){ data = r.data.data; }
+        else { data = { profile:null, days:{} }; }
+        if(!data.days) data.days = {};
+      });
+  }
+  function persist(){
+    if(!user) return;
+    $("saveStatus").textContent = "Salvando…";
+    sb.from("protocols").upsert({user_id:user.id, data:data, updated_at:new Date().toISOString()})
+      .then(function(r){
+        $("saveStatus").textContent = r.error ? "Não foi possível salvar agora — tentaremos de novo." : "Salvo na sua conta ✓";
+        if(r.error){ clearTimeout(saveTimer); saveTimer = setTimeout(persist, 8000); }
+      });
+  }
+  function touch(){
+    clearTimeout(saveTimer);
+    $("saveStatus").textContent = "Salvando…";
+    saveTimer = setTimeout(persist, 2000);
+  }
+
+  /* ---------- PERGUNTAS (wizard) ---------- */
+  var MAXC = 6;
+  function cenaRow(vals){
+    var div = document.createElement("div");
+    div.className = "cena-row";
+    div.innerHTML =
+      '<div class="cena-top"><span>Objetivo</span><button class="linklike rm" type="button">remover</button></div>'+
+      '<input type="text" class="c-title" maxlength="80" placeholder="Título curto — ex.: A conta, O negócio, A casa nova">'+
+      '<textarea class="c-text" placeholder="A cena: Veja-se… Sinta…"></textarea>';
+    div.querySelector(".c-title").value = (vals && vals.title) || "";
+    div.querySelector(".c-text").value = (vals && vals.text) || "";
+    div.querySelector(".rm").addEventListener("click", function(){
+      if($("cenas").children.length > 1) div.remove();
+    });
+    return div;
+  }
+  $("btnAddCena").addEventListener("click", function(){
+    if($("cenas").children.length < MAXC) $("cenas").appendChild(cenaRow());
+  });
+  $("btnSuggestAff").addEventListener("click", function(){
+    var titles = Array.prototype.map.call(document.querySelectorAll("#cenas .c-title"), function(i){return i.value.trim();})
+      .filter(function(t){return t;});
+    if(!titles.length){ $("wizardMsg").textContent = "Preencha os títulos dos objetivos primeiro."; return; }
+    var cur = $("wAff").value.trim();
+    var extra = titles.map(function(t){ return t + " — realizado, próspero e cheio de vida."; }).join("\n");
+    $("wAff").value = (cur ? cur + "\n" : "") + extra;
+    $("wizardMsg").textContent = "Sugestões adicionadas — edite como quiser.";
+  });
+  function fillWizard(p){
+    p = p || {};
+    $("wName").value = p.name || "";
+    $("wGratNow").value = p.gratNow || "";
+    $("wGratComing").value = p.gratComing || "";
+    $("wAff").value = (p.affirmations || []).join("\n");
+    $("wPurpose").value = p.purpose || "";
+    var c = $("cenas"); c.innerHTML = "";
+    var scenes = (p.scenes && p.scenes.length) ? p.scenes : [null];
+    scenes.slice(0,MAXC).forEach(function(s){ c.appendChild(cenaRow(s)); });
+  }
+  $("btnSaveWizard").addEventListener("click", function(){
+    var scenes = Array.prototype.map.call(document.querySelectorAll("#cenas .cena-row"), function(row){
+      return { title: row.querySelector(".c-title").value.trim(), text: row.querySelector(".c-text").value.trim() };
+    }).filter(function(s){ return s.title || s.text; });
+    var p = {
+      name: $("wName").value.trim(),
+      gratNow: $("wGratNow").value.trim(),
+      gratComing: $("wGratComing").value.trim(),
+      scenes: scenes,
+      affirmations: $("wAff").value.split(/\n+/).map(function(l){return l.trim();}).filter(function(l){return l;}),
+      purpose: $("wPurpose").value.trim()
+    };
+    if(!p.name){ $("wizardMsg").textContent = "Diga como você quer ser chamado."; return; }
+    if(!scenes.length){ $("wizardMsg").textContent = "Adicione pelo menos um objetivo."; return; }
+    data.profile = p;
+    $("wizardMsg").textContent = "";
+    persist();
+    renderApp();
+    show("viewApp");
+  });
+  $("btnCancelWizard").addEventListener("click", function(){ show("viewApp"); });
+
+  /* ---------- PROTOCOLO ---------- */
+  var GERAIS_HTML =
+    "<p>Eu sou um canal aberto para a abundância infinita. Riqueza flui até mim de múltiplas fontes.</p>"+
+    "<p>Eu sou próspero em todas as áreas da minha vida. Minha mente está sintonizada com a frequência da riqueza, e eu atraio oportunidades naturalmente.</p>"+
+    "<p>Eu mereço prosperidade. O universo conspira a meu favor, e cada dia fico mais rico, mais sábio e mais saudável.</p>";
+  var ENTREGA_HTML =
+    "<p>Três respirações profundas:</p>"+
+    "<p>1. solte a ansiedade sobre dinheiro<br>2. solte o medo de escassez<br>3. solte a necessidade de controlar o como.</p>"+
+    "<p><strong>Eu confio. Eu entrego. Tudo está se desdobrando perfeitamente. Está feito.</strong></p>";
+  var READY_HTML = "<p>Deitado, confortável, olhos fechados. Toque em iniciar — o roteiro de cada minuto aparece aqui conforme o tempo passa. Use também para treinar na noite anterior.</p>";
+
+  function scenesHtml(p){
+    return (p.scenes||[]).map(function(s){
+      return "<p>"+(s.title?"<strong>"+esc(s.title)+".</strong> ":"")+esc(s.text)+"</p>";
+    }).join("");
+  }
+  function phasesFor(p){
+    return [
+      {at:0,   name:"Minuto 1 · Gratidão",     html: paras(p.gratNow) + paras(p.gratComing)},
+      {at:60,  name:"Minuto 2 · Visualização", html: scenesHtml(p)},
+      {at:120, name:"Minuto 3 · Afirmações",   html: GERAIS_HTML + paras((p.affirmations||[]).join("\n"))},
+      {at:180, name:"Minuto 4 · Propósito",    html: paras(p.purpose)},
+      {at:240, name:"Minuto 5 · Entrega",      html: ENTREGA_HTML}
+    ];
+  }
+  var phases = [];
+
+  function renderApp(){
+    var p = data.profile || {};
+    $("appTitle").textContent = p.name ? "Protocolo de " + p.name : "Protocolo dos 5 Minutos";
+    document.title = p.name ? "Protocolo de " + p.name : "Protocolo dos 5 Minutos";
+    $("rGrat").innerHTML = paras(p.gratNow) + paras(p.gratComing);
+    var sc = p.scenes || [];
+    $("rCenasLabel").textContent = "Suas cenas — uns " + (sc.length ? Math.max(5, Math.round(60/sc.length)) : 10) + " segundos em cada";
+    $("rCenas").innerHTML = scenesHtml(p);
+    var hasAff = p.affirmations && p.affirmations.length;
+    $("rAffBox").hidden = !hasAff;
+    $("rAff").innerHTML = hasAff ? paras(p.affirmations.join("\n")) : "";
+    $("rPurpose").innerHTML = paras(p.purpose);
+    phases = phasesFor(p);
+    resetTimer();
+    renderGrid();
+    panelHide();
+  }
+
+  /* ---------- meditação guiada ---------- */
+  var TOTAL = 300, elapsed = 0, running = false, iv = null, shownPhase = -1;
+  function fmt(s){ var m=Math.floor(s/60), r=s%60; return m+":"+(r<10?"0":"")+r; }
+  function renderTimer(){
+    $("tClock").textContent = fmt(TOTAL - elapsed);
+    $("tFill").style.width = (elapsed/TOTAL*100)+"%";
+    if(elapsed >= TOTAL){
+      $("tPhase").textContent = "Concluído";
+      $("tCue").innerHTML = "<p>Abra os olhos. O dia começa programado por você.</p>";
+      shownPhase = 99; return;
+    }
+    var idx = 0;
+    for(var i=0;i<phases.length;i++){ if(elapsed >= phases[i].at) idx = i; }
+    if(idx !== shownPhase){
+      shownPhase = idx;
+      $("tPhase").textContent = phases[idx].name;
+      $("tCue").innerHTML = phases[idx].html || "<p>(sem roteiro — edite suas respostas)</p>";
+      $("tCue").scrollTop = 0;
+    }
+  }
+  function stopTimer(){ running=false; clearInterval(iv); $("tStart").textContent="Iniciar"; }
+  function resetTimer(){
+    stopTimer(); elapsed = 0; shownPhase = -1;
+    $("tPhase").textContent="Pronto para começar";
+    $("tCue").innerHTML = READY_HTML;
+    $("tClock").textContent=fmt(TOTAL); $("tFill").style.width="0%";
+  }
+  $("tStart").addEventListener("click", function(){
+    if(running){ stopTimer(); $("tStart").textContent="Continuar"; return; }
+    if(elapsed >= TOTAL){ elapsed = 0; shownPhase = -1; }
+    running = true; $("tStart").textContent = "Pausar";
+    iv = setInterval(function(){
+      elapsed++;
+      if(elapsed >= TOTAL){ stopTimer(); elapsed = TOTAL; }
+      renderTimer();
+    }, 1000);
+    renderTimer();
+  });
+  $("tReset").addEventListener("click", resetTimer);
+
+  /* ---------- tracker + diário ---------- */
+  function dayObj(n){
+    if(!data.days[n]) data.days[n] = {done:false, note:""};
+    return data.days[n];
+  }
+  function doneTotal(){
+    var t=0; for(var k in data.days){ if(data.days[k] && data.days[k].done) t++; }
+    return t;
+  }
+  function renderGrid(){
+    var grid = $("grid30"); grid.innerHTML = "";
+    for(let i=1;i<=30;i++){
+      var d = data.days[i] || {done:false, note:""};
+      var b = document.createElement("button");
+      b.className = "day" + (d.done ? " done" : "") + (selectedDay===i ? " sel" : "");
+      b.type = "button"; b.textContent = i;
+      b.setAttribute("aria-pressed", d.done ? "true" : "false");
+      b.setAttribute("aria-label", "Dia "+i+(d.done?" — concluído":"")+(d.note?" — com registro":""));
+      if(d.note){ var dot=document.createElement("span"); dot.className="notedot"; b.appendChild(dot); }
+      b.addEventListener("click", function(){ selectDay(i); });
+      grid.appendChild(b);
+    }
+    $("doneCount").textContent = doneTotal();
+  }
+  function panelHide(){ selectedDay = null; $("dayPanel").hidden = true; }
+  function selectDay(n){
+    selectedDay = n;
+    var d = dayObj(n);
+    $("dayPanel").hidden = false;
+    $("dpTitle").textContent = "Dia " + n;
+    $("dpToggle").textContent = d.done ? "Concluída ✓ (desmarcar)" : "Marcar manhã como concluída";
+    $("dpNote").placeholder = n===1
+      ? "Registro do dia 1 — como você se sente hoje, financeira, emocional e espiritualmente. Você vai reler isto no dia 30."
+      : (n===30 ? "Registro do dia 30 — releia o dia 1 e escreva o que mudou."
+                : "Registro do dia — o que sentiu, o que mudou, o que aconteceu.");
+    $("dpNote").value = d.note || "";
+    renderGrid();
+    $("dayPanel").scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+  $("dpToggle").addEventListener("click", function(){
+    if(selectedDay===null) return;
+    var d = dayObj(selectedDay);
+    d.done = !d.done;
+    $("dpToggle").textContent = d.done ? "Concluída ✓ (desmarcar)" : "Marcar manhã como concluída";
+    renderGrid(); touch();
+  });
+  $("dpNote").addEventListener("input", function(){
+    if(selectedDay===null) return;
+    dayObj(selectedDay).note = $("dpNote").value;
+    renderGrid(); touch();
+  });
+
+  /* ---------- exportação ---------- */
+  $("btnExport").addEventListener("click", function(){
+    var p = data.profile || {};
+    var lines = [];
+    lines.push("PROTOCOLO DOS 5 MINUTOS — REGISTROS" + (p.name ? " DE " + p.name.toUpperCase() : ""));
+    lines.push("Exportado em " + new Date().toLocaleDateString("pt-BR") + " às " + new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}));
+    lines.push("Manhãs concluídas: " + doneTotal() + " de 30");
+    lines.push("");
+    for(var i=1;i<=30;i++){
+      var d = data.days[i];
+      if(!d || (!d.done && !d.note)) continue;
+      lines.push("Dia " + i + (d.done ? " — manhã concluída" : " — não concluída"));
+      if(d.note) lines.push(d.note);
+      lines.push("");
+    }
+    if(lines.length <= 4) lines.push("(Nenhum registro ainda.)");
+    var blob = new Blob([lines.join("\n")], {type:"text/plain;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "protocolo-5-minutos-registros.txt";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+
+  /* ---------- topo ---------- */
+  $("btnEdit").addEventListener("click", function(){
+    fillWizard(data.profile);
+    $("btnCancelWizard").hidden = false;
+    show("viewWizard");
+  });
+  $("btnLogout").addEventListener("click", function(){
+    sb.auth.signOut().then(function(){ /* route() via onAuthStateChange */ });
+  });
+
+  /* ---------- roteamento ---------- */
+  function route(){
+    if(recoveryMode){ show("viewAuth"); $("authForm").hidden = true; $("recoveryForm").hidden = false; return; }
+    if(!user){
+      show("viewAuth");
+      $("authForm").hidden = false; $("recoveryForm").hidden = true;
+      return;
+    }
+    loadRemote().then(function(){
+      if(data.profile){ renderApp(); show("viewApp"); }
+      else { fillWizard(null); $("btnCancelWizard").hidden = true; show("viewWizard"); }
+    }).catch(function(){
+      show("viewApp"); renderApp();
+      $("saveStatus").textContent = "Não foi possível carregar seus dados — verifique a conexão.";
+    });
+  }
+
+  if(!configured){
+    $("cfgBanner").hidden = false;
+    show("viewAuth");
+  } else {
+    sb.auth.onAuthStateChange(function(event, session){
+      if(event === "PASSWORD_RECOVERY"){ recoveryMode = true; }
+      user = session ? session.user : null;
+      route();
+    });
+    sb.auth.getSession().then(function(r){
+      user = (r.data && r.data.session) ? r.data.session.user : null;
+      route();
+    });
+  }
+})();
+</script>
+</body>
+</html>
