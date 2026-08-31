@@ -53,6 +53,7 @@
   .auth-box{max-width:420px;margin:8vh auto 0;}
   .auth-actions{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;}
   .auth-alt{margin-top:16px;}
+  .confirm-title{font-family:"Roboto Serif",Georgia,serif;font-size:20px;color:var(--ink-strong);margin:0 0 12px;}
 
   /* Wizard */
   .step-tag{font-family:"Roboto Serif",Georgia,serif;font-size:20px;color:var(--ink-strong);font-weight:500;margin:34px 0 4px;}
@@ -158,6 +159,15 @@
         <label class="f" for="newPass">Nova senha</label>
         <input type="password" id="newPass" autocomplete="new-password" placeholder="mínimo 6 caracteres">
         <div class="auth-actions"><button class="btn primary" id="btnSetPass">Salvar nova senha</button></div>
+      </div>
+      <div id="confirmForm" hidden>
+        <p class="confirm-title">Confirme seu e-mail</p>
+        <p>Enviamos um link de confirmação para <strong id="confirmEmail"></strong>. Abra o e-mail e clique no link — você volta para cá já com o acesso liberado.</p>
+        <p class="hint">Não chegou em alguns minutos? Verifique a caixa de spam ou promoções.</p>
+        <div class="auth-actions">
+          <button class="btn" id="btnResend">Reenviar e-mail</button>
+          <button class="btn" id="btnBackLogin">Voltar</button>
+        </div>
       </div>
       <p class="msg" id="authMsg"></p>
     </div>
@@ -355,6 +365,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   var user = null;
   var data = { profile:null, days:{} };
   var saveTimer = null, selectedDay = null, recoveryMode = false;
+  var confirmMode = false, confirmEmailAddr = "";
 
   /* ---------- navegação entre páginas ---------- */
   function show(view){
@@ -364,6 +375,11 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
 
   /* ---------- ACESSO ---------- */
   function authMsg(t, isErr){ var m=$("authMsg"); m.textContent=t||""; m.className="msg"+(isErr?" err":""); }
+  function authPanel(which){
+    $("authForm").hidden     = which !== "login";
+    $("recoveryForm").hidden = which !== "recovery";
+    $("confirmForm").hidden  = which !== "confirm";
+  }
 
   $("btnLogin").addEventListener("click", function(){
     if(!sb){ authMsg("Configuração pendente (veja o aviso acima).", true); return; }
@@ -381,9 +397,22 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     authMsg("Criando acesso…");
     sb.auth.signUp({email:email, password:pass}).then(function(r){
       if(r.error){ authMsg(traduzErro(r.error.message), true); return; }
-      if(r.data && r.data.session){ authMsg(""); }
-      else { authMsg("Acesso criado! Verifique seu e-mail para confirmar o cadastro e depois entre."); }
+      if(r.data && r.data.session){ authMsg(""); return; }
+      confirmMode = true; confirmEmailAddr = email;
+      $("confirmEmail").textContent = email;
+      authPanel("confirm");
+      authMsg("");
     });
+  });
+  $("btnResend").addEventListener("click", function(){
+    if(!sb || !confirmEmailAddr) return;
+    authMsg("Reenviando…");
+    sb.auth.resend({type:"signup", email:confirmEmailAddr}).then(function(r){
+      authMsg(r.error ? traduzErro(r.error.message) : "E-mail reenviado.", !!r.error);
+    });
+  });
+  $("btnBackLogin").addEventListener("click", function(){
+    confirmMode = false; authPanel("login"); authMsg("");
   });
   $("btnForgot").addEventListener("click", function(){
     if(!sb) return;
@@ -401,7 +430,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     sb.auth.updateUser({password:p}).then(function(r){
       if(r.error){ authMsg(traduzErro(r.error.message), true); return; }
       recoveryMode = false;
-      $("recoveryForm").hidden = true; $("authForm").hidden = false;
+      authPanel("login");
       authMsg("Senha atualizada!");
       route();
     });
@@ -410,7 +439,8 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     m = String(m||"");
     if(/invalid login credentials/i.test(m)) return "E-mail ou senha incorretos.";
     if(/already registered/i.test(m)) return "Este e-mail já tem acesso — use \"Entrar\".";
-    if(/rate limit/i.test(m)) return "Muitas tentativas. Aguarde um pouco e tente de novo.";
+    if(/rate limit|too many/i.test(m)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+    if(/sending (the )?(confirmation )?email|smtp/i.test(m)) return "Não conseguimos enviar o e-mail de confirmação agora. Tente novamente em instantes.";
     if(/email not confirmed/i.test(m)) return "Confirme seu e-mail pelo link que enviamos antes de entrar.";
     return "Não foi possível concluir: " + m;
   }
@@ -674,12 +704,13 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
 
   /* ---------- roteamento ---------- */
   function route(){
-    if(recoveryMode){ show("viewAuth"); $("authForm").hidden = true; $("recoveryForm").hidden = false; return; }
+    if(recoveryMode){ show("viewAuth"); authPanel("recovery"); return; }
     if(!user){
       show("viewAuth");
-      $("authForm").hidden = false; $("recoveryForm").hidden = true;
+      authPanel(confirmMode ? "confirm" : "login");
       return;
     }
+    confirmMode = false;
     loadRemote().then(function(){
       if(data.profile){ renderApp(); show("viewApp"); }
       else { fillWizard(null); $("btnCancelWizard").hidden = true; show("viewWizard"); }
