@@ -114,6 +114,31 @@
   footer{margin-top:72px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);}
   footer a{color:var(--accent-ink);}
   @media (max-width:480px){.minuto{grid-template-columns:40px 1fr;gap:14px;}.m-num{font-size:26px;}}
+
+  /* rascunho automatico do questionario */
+  .draft-status{font-size:13px;color:var(--muted);margin:14px 0 0;min-height:18px;}
+  .draft-recovered{background:var(--surface-2);border:1px solid var(--accent);border-radius:6px;
+    padding:14px 18px;font-size:14px;margin:0 0 22px;}
+  .draft-recovered button{margin-left:6px;}
+
+  /* impressao / PDF */
+  .print-only{display:none;}
+  @media print{
+    @page{margin:18mm 16mm;}
+    body{background:#fff;color:#14202b;font-size:11pt;}
+    .wrap{max-width:none;padding:0;}
+    .print-only{display:block;}
+    .no-print,.topbar-actions,.timer,#viewAuth,#viewWizard{display:none !important;}
+    h1{font-size:22pt;margin-bottom:2pt;}
+    h2{font-size:14pt;margin-top:18pt;page-break-after:avoid;}
+    .minuto{page-break-inside:avoid;border-bottom:1px solid #d8d2c4;}
+    .roteiro{background:#fff;border:1px solid #d8d2c4;}
+    .roteiro .r-label,.eyebrow,.m-num,.print-date{color:#8A6C33;}
+    ul.clean li{page-break-inside:avoid;border-bottom:1px solid #ece7db;}
+    .print-date{font-size:10pt;margin:0 0 4pt;}
+    footer{margin-top:18pt;font-size:8.5pt;}
+    a{color:#14202b;text-decoration:none;}
+  }
 </style>
 </head>
 <body>
@@ -180,6 +205,11 @@
   <h1>Monte o seu protocolo</h1>
   <p class="h2sub" style="margin-top:12px">Suas respostas viram os roteiros que você vai praticar todas as manhãs. Escreva no presente, como se já fosse realidade — você poderá editar tudo depois.</p>
 
+  <div class="draft-recovered" id="draftRecovered" hidden>
+    Recuperamos o que você estava escrevendo da última vez.
+    <button class="linklike" id="btnDiscardDraft" type="button">descartar e começar de novo</button>
+  </div>
+
   <div class="card">
     <p class="step-tag" style="margin-top:0">1 · Quem é você</p>
     <label class="f" for="wName">Seu primeiro nome</label>
@@ -212,6 +242,7 @@
       <button class="btn" id="btnCancelWizard" hidden>Cancelar</button>
     </div>
     <p class="msg" id="wizardMsg"></p>
+    <p class="draft-status" id="draftStatus"></p>
   </div>
 </div>
 
@@ -221,8 +252,10 @@
     <div>
       <p class="eyebrow">Ritual matinal · Princípios de Napoleon Hill</p>
       <h1 id="appTitle">Protocolo dos 5 Minutos</h1>
+      <p class="print-only print-date" id="printDate"></p>
     </div>
     <div class="topbar-actions">
+      <button class="btn small" id="btnPrint">Imprimir / salvar em PDF</button>
       <button class="btn small" id="btnEdit">Editar respostas</button>
       <button class="btn small" id="btnLogout">Sair</button>
     </div>
@@ -316,13 +349,13 @@
     <li><span class="dot">✕</span><span>Quando a mente sabotar — <em>"isso é bobagem"</em> — não brigue com o pensamento. Reconheça que ele está ali e volte à gratidão.</span></li>
   </ul>
 
-  <h2>Desafio de 30 dias</h2>
-  <p class="h2sub">Toque em um dia para marcar a manhã concluída e escrever o registro daquele dia. Tudo fica salvo na sua conta.</p>
-  <p class="streak">Manhãs concluídas: <strong id="doneCount">0</strong> de 30</p>
-  <div class="grid30" id="grid30"></div>
-  <p class="tracker-note">Faltou um dia? Não recomece do zero — apenas não falhe duas vezes seguidas.</p>
+  <h2 class="no-print">Desafio de 30 dias</h2>
+  <p class="h2sub no-print">Toque em um dia para marcar a manhã concluída e escrever o registro daquele dia. Tudo fica salvo na sua conta.</p>
+  <p class="streak no-print">Manhãs concluídas: <strong id="doneCount">0</strong> de 30</p>
+  <div class="grid30 no-print" id="grid30"></div>
+  <p class="tracker-note no-print">Faltou um dia? Não recomece do zero — apenas não falhe duas vezes seguidas.</p>
 
-  <div class="daypanel" id="dayPanel" hidden>
+  <div class="daypanel no-print" id="dayPanel" hidden>
     <div class="dp-top">
       <p class="dp-title" id="dpTitle">Dia 1</p>
       <button class="btn small" id="dpToggle">Marcar manhã como concluída</button>
@@ -331,7 +364,7 @@
     <p class="save-status" id="saveStatus"></p>
   </div>
 
-  <div class="export-row">
+  <div class="export-row no-print">
     <button class="btn" id="btnExport">Exportar registros</button>
   </div>
 
@@ -366,6 +399,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   var data = { profile:null, days:{} };
   var saveTimer = null, selectedDay = null, recoveryMode = false;
   var confirmMode = false, confirmEmailAddr = "";
+  var accessToken = null, pendingSave = false, draftTimer = null, inWizard = false;
 
   /* ---------- navegação entre páginas ---------- */
   function show(view){
@@ -460,11 +494,48 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     $("saveStatus").textContent = "Salvando…";
     sb.from("protocols").upsert({user_id:user.id, data:data, updated_at:new Date().toISOString()})
       .then(function(r){
-        $("saveStatus").textContent = r.error ? "Não foi possível salvar agora — tentaremos de novo." : "Salvo na sua conta ✓";
-        if(r.error){ clearTimeout(saveTimer); saveTimer = setTimeout(persist, 8000); }
+        if(r.error){
+          $("saveStatus").textContent = "Não foi possível salvar agora — tentaremos de novo.";
+          clearTimeout(saveTimer); saveTimer = setTimeout(persist, 8000);
+        } else {
+          pendingSave = false;
+          $("saveStatus").textContent = "Salvo na sua conta ✓";
+          if(inWizard) $("draftStatus").textContent = "Rascunho salvo na sua conta ✓";
+        }
       });
   }
+
+  /**
+   * Gravacao de emergencia.
+   *
+   * Quando o telefone toca, o navegador do celular descarta a aba da memoria
+   * sem avisar — e uma gravacao normal, assincrona, morre no meio. Aqui a
+   * chamada vai com keepalive, que o navegador se compromete a concluir
+   * mesmo depois da pagina sumir. Disparada quando a aba fica oculta.
+   */
+  function flushNow(){
+    if(!user || !accessToken || !pendingSave) return;
+    try{
+      fetch(SUPABASE_URL + "/rest/v1/protocols?on_conflict=user_id", {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": "Bearer " + accessToken,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates,return=minimal"
+        },
+        body: JSON.stringify({user_id:user.id, data:data, updated_at:new Date().toISOString()})
+      });
+      pendingSave = false;
+    }catch(e){}
+  }
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "hidden") flushNow();
+  });
+  window.addEventListener("pagehide", flushNow);
   function touch(){
+    pendingSave = true;
     clearTimeout(saveTimer);
     $("saveStatus").textContent = "Salvando…";
     saveTimer = setTimeout(persist, 2000);
@@ -498,6 +569,37 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     $("wAff").value = (cur ? cur + "\n" : "") + extra;
     $("wizardMsg").textContent = "Sugestões adicionadas — edite como quiser.";
   });
+  /** Le o estado atual do formulario, mesmo pela metade. */
+  function readWizard(){
+    var scenes = Array.prototype.map.call(document.querySelectorAll("#cenas .cena-row"), function(row){
+      return { title: row.querySelector(".c-title").value.trim(), text: row.querySelector(".c-text").value.trim() };
+    });
+    return {
+      name: $("wName").value.trim(),
+      gratNow: $("wGratNow").value.trim(),
+      gratComing: $("wGratComing").value.trim(),
+      scenes: scenes,
+      affirmations: $("wAff").value.split(/\n+/).map(function(l){return l.trim();}).filter(function(l){return l;}),
+      purpose: $("wPurpose").value.trim()
+    };
+  }
+  function hasContent(d){
+    if(!d) return false;
+    if(d.name || d.gratNow || d.gratComing || d.purpose) return true;
+    if(d.affirmations && d.affirmations.length) return true;
+    return !!(d.scenes || []).filter(function(s){ return s && (s.title || s.text); }).length;
+  }
+  /** Guarda o rascunho na conta da pessoa, sem esperar ela terminar. */
+  function saveDraft(){
+    if(!inWizard || !user) return;
+    data.draft = readWizard();
+    pendingSave = true;
+    $("draftStatus").textContent = "Salvando rascunho…";
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(persist, 1200);
+  }
+  $("viewWizard").addEventListener("input", saveDraft);
+
   function fillWizard(p){
     p = p || {};
     $("wName").value = p.name || "";
@@ -509,6 +611,25 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     var scenes = (p.scenes && p.scenes.length) ? p.scenes : [null];
     scenes.slice(0,MAXC).forEach(function(s){ c.appendChild(cenaRow(s)); });
   }
+  /** Abre o questionario preferindo sempre o rascunho mais recente. */
+  function openWizard(fromEdit){
+    var recovered = hasContent(data.draft);
+    fillWizard(recovered ? data.draft : (fromEdit ? data.profile : null));
+    $("draftRecovered").hidden = !recovered;
+    $("draftStatus").textContent = "";
+    $("wizardMsg").textContent = "";
+    $("btnCancelWizard").hidden = !data.profile;
+    inWizard = true;
+    show("viewWizard");
+  }
+  $("btnDiscardDraft").addEventListener("click", function(){
+    delete data.draft;
+    fillWizard(data.profile);
+    $("draftRecovered").hidden = true;
+    $("draftStatus").textContent = "";
+    touch();
+  });
+
   $("btnSaveWizard").addEventListener("click", function(){
     var scenes = Array.prototype.map.call(document.querySelectorAll("#cenas .cena-row"), function(row){
       return { title: row.querySelector(".c-title").value.trim(), text: row.querySelector(".c-text").value.trim() };
@@ -524,12 +645,24 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(!p.name){ $("wizardMsg").textContent = "Diga como você quer ser chamado."; return; }
     if(!scenes.length){ $("wizardMsg").textContent = "Adicione pelo menos um objetivo."; return; }
     data.profile = p;
+    delete data.draft;
+    inWizard = false;
+    clearTimeout(draftTimer);
+    pendingSave = true;
     $("wizardMsg").textContent = "";
+    $("draftStatus").textContent = "";
+    $("draftRecovered").hidden = true;
     persist();
     renderApp();
     show("viewApp");
   });
-  $("btnCancelWizard").addEventListener("click", function(){ show("viewApp"); });
+  $("btnCancelWizard").addEventListener("click", function(){
+    delete data.draft;
+    inWizard = false;
+    clearTimeout(draftTimer);
+    touch();
+    show("viewApp");
+  });
 
   /* ---------- PROTOCOLO ---------- */
   var GERAIS_HTML =
@@ -693,10 +826,11 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   });
 
   /* ---------- topo ---------- */
-  $("btnEdit").addEventListener("click", function(){
-    fillWizard(data.profile);
-    $("btnCancelWizard").hidden = false;
-    show("viewWizard");
+  $("btnEdit").addEventListener("click", function(){ openWizard(true); });
+  $("btnPrint").addEventListener("click", function(){
+    var hoje = new Date().toLocaleDateString("pt-BR", {day:"2-digit", month:"long", year:"numeric"});
+    $("printDate").textContent = "Protocolo pessoal · " + hoje;
+    window.print();
   });
   $("btnLogout").addEventListener("click", function(){
     sb.auth.signOut().then(function(){ /* route() via onAuthStateChange */ });
@@ -712,8 +846,8 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     }
     confirmMode = false;
     loadRemote().then(function(){
-      if(data.profile){ renderApp(); show("viewApp"); }
-      else { fillWizard(null); $("btnCancelWizard").hidden = true; show("viewWizard"); }
+      if(data.profile && !hasContent(data.draft)){ inWizard = false; renderApp(); show("viewApp"); }
+      else { openWizard(!!data.profile); }
     }).catch(function(){
       show("viewApp"); renderApp();
       $("saveStatus").textContent = "Não foi possível carregar seus dados — verifique a conexão.";
@@ -727,10 +861,12 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     sb.auth.onAuthStateChange(function(event, session){
       if(event === "PASSWORD_RECOVERY"){ recoveryMode = true; }
       user = session ? session.user : null;
+      accessToken = session ? session.access_token : null;
       route();
     });
     sb.auth.getSession().then(function(r){
       user = (r.data && r.data.session) ? r.data.session.user : null;
+      accessToken = (r.data && r.data.session) ? r.data.session.access_token : null;
       route();
     });
   }
