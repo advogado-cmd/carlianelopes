@@ -5,13 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Protocolo dos 5 Minutos</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Serif:opsz,wght@8..144,300;8..144,400;8..144,500;8..144,600&family=Roboto:wght@400;500;700&display=swap">
+<meta name="theme-color" content="#082533">
+<meta name="description" content="Ritual matinal de cinco minutos para programar a mente para a prosperidade — personalizado com os seus objetivos.">
+<link rel="manifest" href="/5minutos/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/5minutos/icone-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/5minutos/icone-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="5 Minutos">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <style>
   :root{
     --bg:#F3EFE4; --surface:#FBF8F1; --surface-2:#ECE6D6;
     --ink:#122B3C; --ink-strong:#082533; --muted:#5D6E77;
     --accent:#CCAB76; --accent-ink:#8A6C33; --line:#DCD4C0;
     --done:#5E7A54; --done-bg:#E4E9DC; --err:#9C3B2E;
+    /* sinais do ritual: tons lavados, sem estridência */
+    --ico-1:#B08A7E; --ico-2:#7E97AE; --ico-3:#BFA06B;
+    --ico-4:#8BA184; --ico-5:#9A92AE; --ico-quiet:#94A0A6;
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -19,6 +31,8 @@
       --ink:#E9E3D4; --ink-strong:#F5F0E3; --muted:#93A5AD;
       --accent:#D8BC8B; --accent-ink:#D8BC8B; --line:#1C4558;
       --done:#9DBA8F; --done-bg:#163A34; --err:#E08A7C;
+      --ico-1:#D2ABA0; --ico-2:#A3BCD1; --ico-3:#DCC08C;
+      --ico-4:#AEC4A7; --ico-5:#BAB2CE; --ico-quiet:#8E9EA6;
     }
   }
   *{box-sizing:border-box;}
@@ -100,10 +114,44 @@
   .day:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;}
   .day.done{background:var(--done-bg);border-color:var(--done);color:var(--done);font-weight:700;}
   .day.sel{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-ink);}
+  .day.hoje{border-color:var(--accent-ink);border-width:2px;font-weight:700;color:var(--ink-strong);}
+  .day.perdido{opacity:.45;}
+  .day.futuro{opacity:.6;}
+  .hoje-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;}
+  .hoje-linha .btn{margin:0;}
+  .selo{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase;background:var(--surface-2);color:var(--accent-ink);}
+  .selo.ok{background:var(--done-bg);color:var(--done);}
+  .dia1{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin:0 0 16px;}
+  .dia1 .r-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);
+    font-weight:700;display:block;margin-bottom:8px;}
+  .dia1 p{margin:0;font-family:"Roboto Serif",Georgia,serif;font-size:15px;line-height:1.6;white-space:pre-wrap;}
+  .concluido{background:var(--done-bg);border:1px solid var(--done);border-radius:8px;
+    padding:18px 20px;margin:0 0 18px;color:var(--done);}
+  .concluido strong{display:block;font-family:"Roboto Serif",Georgia,serif;font-size:19px;margin-bottom:6px;}
   .day .notedot{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent-ink);}
   .streak{font-size:14px;color:var(--muted);margin:0 0 6px;}
   .streak strong{color:var(--ink-strong);font-variant-numeric:tabular-nums;}
   .tracker-note{font-size:13px;color:var(--muted);margin-top:8px;}
+  .t-note{font-size:13px;color:var(--muted);margin:14px 0 0;text-align:center;}
+  details.aviso{border:1px solid var(--line);border-radius:6px;background:var(--surface);
+    padding:0 18px;margin:20px 0 0;}
+  details.aviso summary{cursor:pointer;padding:14px 0;font-size:14px;font-weight:500;color:var(--ink-strong);}
+  details.aviso[open] summary{border-bottom:1px solid var(--line);margin-bottom:14px;}
+  details.aviso h3{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:16px;
+    color:var(--ink-strong);margin:18px 0 6px;}
+  details.aviso h3:first-of-type{margin-top:0;}
+  details.aviso p, details.aviso li{font-size:14px;line-height:1.6;margin:0 0 10px;}
+  details.aviso ul{padding-left:20px;margin:0 0 10px;}
+  details.aviso .fecho{padding-bottom:16px;}
+  .consent{display:flex;gap:10px;align-items:flex-start;margin:20px 0 0;font-size:14px;line-height:1.5;}
+  .consent input{margin-top:3px;accent-color:var(--accent-ink);flex:0 0 auto;}
+  .zona-dados{border:1px solid var(--line);border-radius:8px;padding:20px 22px;margin-top:26px;background:var(--surface);}
+  .zona-dados h3{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:18px;
+    color:var(--ink-strong);margin:0 0 8px;}
+  .zona-dados p{font-size:14px;color:var(--muted);margin:0 0 14px;}
+  .zona-perigo{border-color:var(--err);}
+  .zona-perigo input[type=text]{max-width:240px;margin:0 0 12px;}
   .daypanel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-top:22px;}
   .dp-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
   .dp-title{font-family:"Roboto Serif",Georgia,serif;font-weight:500;font-size:20px;color:var(--ink-strong);margin:0;}
@@ -120,6 +168,18 @@
   .draft-recovered{background:var(--surface-2);border:1px solid var(--accent);border-radius:6px;
     padding:14px 18px;font-size:14px;margin:0 0 22px;}
   .draft-recovered button{margin-left:6px;}
+
+  /* iconografia do ritual — um sinal por minuto, para reconhecer sem ler */
+  .ico{width:22px;height:22px;flex:0 0 22px;fill:none;stroke:var(--ico-quiet);
+    stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+  .ico-1{stroke:var(--ico-1);} .ico-2{stroke:var(--ico-2);} .ico-3{stroke:var(--ico-3);}
+  .ico-4{stroke:var(--ico-4);} .ico-5{stroke:var(--ico-5);} .ico-quiet{stroke:var(--ico-quiet);}
+  .m-head{display:flex;align-items:center;gap:10px;margin:0 0 4px;}
+  .m-head h3{margin:0;}
+  .t-phase-row{display:flex;align-items:center;gap:8px;}
+  .t-phase-row .ico{width:18px;height:18px;flex:0 0 18px;}
+  ul.clean .ico{width:19px;height:19px;flex:0 0 19px;margin-top:2px;}
+  ul.clean li{grid-template-columns:19px 1fr;}
 
   /* gravacao da propria voz */
   .rec{margin-top:14px;padding:14px 16px;border:1px dashed var(--line);border-radius:6px;background:var(--surface);}
@@ -180,12 +240,71 @@
   <div class="auth-box" style="margin-top:44px" id="authAnchor">
     <div class="banner" id="cfgBanner" hidden>Configuração pendente: edite este arquivo e preencha SUPABASE_URL e SUPABASE_ANON_KEY no topo do script.</div>
     <h2 style="margin:0 0 14px;font-size:22px">Crie seu acesso gratuito</h2>
+    <details class="aviso" id="avisoPrivacidade" style="margin:0 0 20px">
+      <summary>Aviso de privacidade — o que guardamos e por quê</summary>
+
+      <h3>Quem trata seus dados</h3>
+      <p>Carliane Lopes, responsável por este site, é a controladora dos dados tratados aqui.
+      Contato para qualquer questão de privacidade: <a href="mailto:contato@carlianelopes.com.br">contato@carlianelopes.com.br</a>.</p>
+
+      <h3>O que é coletado</h3>
+      <ul>
+        <li>Seu e-mail e uma senha, para criar e proteger o acesso.</li>
+        <li>As respostas do questionário: seu nome, suas gratidões, seus objetivos, suas afirmações e seu propósito.</li>
+        <li>Os registros que você escrever no diário dos 30 dias e as marcações das manhãs.</li>
+        <li>As gravações de voz, se você escolher gravar — a gravação é opcional e o protocolo funciona sem ela.</li>
+      </ul>
+
+      <h3>Para que serve</h3>
+      <p>Exclusivamente para montar, guardar e mostrar o seu protocolo pessoal. Seus dados não são
+      usados para publicidade, não são vendidos, não são compartilhados com outras pessoas e não
+      alimentam nenhuma análise sobre você.</p>
+
+      <h3>Base legal</h3>
+      <p>O tratamento se apoia no seu consentimento (art. 7º, I, da LGPD), manifestado quando você
+      marca a caixa no cadastro, e na execução do serviço que você solicitou (art. 7º, V).
+      Você pode retirar o consentimento a qualquer momento apagando sua conta.</p>
+
+      <h3>Sobre a sua voz</h3>
+      <p>A gravação é tratada apenas como um arquivo de áudio, para ser reproduzida de volta para
+      você durante o ritual. Não é usada para identificação biométrica, não é analisada e não é
+      ouvida por ninguém além de você.</p>
+
+      <h3>Quem consegue ver</h3>
+      <p>Só você. Cada conta enxerga apenas a própria linha e a própria pasta de áudios, por
+      regras aplicadas no banco de dados — nem o site nem a administração acessam o conteúdo do
+      seu protocolo. Atuam como operadores, apenas guardando e transmitindo os dados: Supabase
+      (banco e arquivos), Vercel (hospedagem) e Resend (envio dos e-mails de acesso).</p>
+
+      <h3>Por quanto tempo</h3>
+      <p>Enquanto sua conta existir. Você pode apagar tudo quando quiser, pelo botão
+      "Apagar minha conta e meus dados" dentro do protocolo — a exclusão é imediata e definitiva,
+      e alcança o cadastro, as respostas, o diário e as gravações.</p>
+
+      <h3>Seus direitos</h3>
+      <p>A LGPD (art. 18) lhe garante confirmar o tratamento, acessar, corrigir, portar e eliminar
+      seus dados, além de revogar o consentimento. Acesso e correção você faz sozinho, a qualquer
+      momento, pelo botão "Editar respostas"; a portabilidade, pelo botão de exportar os registros;
+      a eliminação, pelo botão de apagar a conta. Para qualquer outro pedido, escreva para o e-mail
+      acima.</p>
+
+      <h3>Um limite importante</h3>
+      <p class="fecho">Este protocolo é uma prática de mentalidade e formação de hábito, inspirada
+      nas ideias de Napoleon Hill. Não é tratamento psicológico, não é atendimento em saúde e não
+      substitui acompanhamento profissional. Nenhum resultado financeiro ou pessoal é prometido.
+      Se você estiver passando por sofrimento psíquico, procure um profissional.</p>
+    </details>
     <div class="card">
       <div id="authForm">
         <label class="f" for="authEmail">E-mail</label>
         <input type="email" id="authEmail" autocomplete="email" placeholder="voce@exemplo.com">
         <label class="f" for="authPass">Senha</label>
         <input type="password" id="authPass" autocomplete="current-password" placeholder="mínimo 6 caracteres">
+        <label class="consent">
+          <input type="checkbox" id="consent">
+          <span>Li o aviso de privacidade acima e concordo com o tratamento dos meus dados para
+          montar e guardar o meu protocolo pessoal. Sei que posso apagar tudo quando quiser.</span>
+        </label>
         <div class="auth-actions">
           <button class="btn primary" id="btnLogin">Entrar</button>
           <button class="btn" id="btnSignup">Criar acesso</button>
@@ -275,7 +394,7 @@
 
   <section class="timer" aria-label="Meditação guiada">
     <div class="t-top">
-      <p class="t-phase" id="tPhase">Pronto para começar</p>
+      <div class="t-phase-row"><span id="tIco"></span><p class="t-phase" id="tPhase">Pronto para começar</p></div>
       <p class="t-clock" id="tClock">5:00</p>
     </div>
     <div class="t-cue" id="tCue"></div>
@@ -288,6 +407,13 @@
     <label class="voice-toggle" id="voiceToggle" hidden>
       <input type="checkbox" id="voiceOn" checked> Tocar minha voz em cada minuto
     </label>
+    <label class="voice-toggle">
+      <input type="checkbox" id="bellOn" checked> Sino suave na virada de cada minuto
+    </label>
+    <div class="t-btns" style="margin-top:16px">
+      <button class="btn" id="btnBaixar">Baixar a meditação completa</button>
+    </div>
+    <p class="t-note" id="baixarMsg">Um áudio de 5 minutos com a sua voz e os sinos, para ouvir no celular sem abrir o site.</p>
   </section>
 
   <h2>O ritual, minuto a minuto</h2>
@@ -297,7 +423,7 @@
   <div class="minuto">
     <div class="m-num">1</div>
     <div class="m-body">
-      <h3>Gratidão</h3>
+      <div class="m-head"><svg class="ico ico-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v3a8 8 0 0 0 16 0v-3"/><path d="M8 10V5.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V6.5a1.5 1.5 0 0 1 3 0V10"/></svg><h3>Gratidão</h3></div>
       <p class="m-tag">0:00 – 1:00</p>
       <p>Agradeça mentalmente, item por item, começando pelo que já existe e terminando pelo que ainda está a caminho.</p>
       <div class="roteiro"><span class="r-label">Seu roteiro</span><div id="rGrat"></div></div>
@@ -318,7 +444,7 @@
   <div class="minuto">
     <div class="m-num">2</div>
     <div class="m-body">
-      <h3>Visualização</h3>
+      <div class="m-head"><svg class="ico ico-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.6"/></svg><h3>Visualização</h3></div>
       <p class="m-tag">1:00 – 2:00</p>
       <p>Crie um filme mental vívido da vida que você está construindo — como realidade presente. O essencial são as <em>emoções</em>.</p>
       <div class="roteiro"><span class="r-label" id="rCenasLabel">Suas cenas</span><div id="rCenas"></div></div>
@@ -339,7 +465,7 @@
   <div class="minuto">
     <div class="m-num">3</div>
     <div class="m-body">
-      <h3>Afirmações</h3>
+      <div class="m-head"><svg class="ico ico-3" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h3l4 3V6L8 9H5Z"/><path d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg><h3>Afirmações</h3></div>
       <p class="m-tag">2:00 – 3:00</p>
       <p>Declare mentalmente, com convicção. Não são pedidos — são declarações.</p>
       <div class="roteiro">
@@ -366,7 +492,7 @@
   <div class="minuto">
     <div class="m-num">4</div>
     <div class="m-body">
-      <h3>Propósito</h3>
+      <div class="m-head"><svg class="ico ico-4" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg><h3>Propósito</h3></div>
       <p class="m-tag">3:00 – 4:00</p>
       <p>Conecte-se com o seu porquê mais profundo. A missão que a prosperidade financia. Visualize o impacto que ela gera.</p>
       <div class="roteiro"><span class="r-label">Seu porquê</span><div id="rPurpose"></div></div>
@@ -387,7 +513,7 @@
   <div class="minuto">
     <div class="m-num">5</div>
     <div class="m-body">
-      <h3>Entrega</h3>
+      <div class="m-head"><svg class="ico ico-5" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v7"/><path d="M9 6l3-3 3 3"/><path d="M4 14a8 8 0 0 0 16 0"/><path d="M4 14v-2"/><path d="M20 14v-2"/></svg><h3>Entrega</h3></div>
       <p class="m-tag">4:00 – 5:00</p>
       <p>Três respirações profundas:</p>
       <ol>
@@ -414,14 +540,19 @@
   <h2>Durante o dia</h2>
   <p class="h2sub">A programação da manhã se desfaz se o dia inteiro trabalhar contra ela. Três reforços:</p>
   <ul class="clean">
-    <li><span class="dot">↻</span><span>Nos momentos vazios — trânsito, espera, fila — revisite mentalmente a visualização e repita uma afirmação. Trinta segundos bastam.</span></li>
-    <li><span class="dot">⚖</span><span>Quando algo desafiador aparecer, respire fundo e declare: <em>"Isso é temporário. Minha prosperidade é permanente."</em></span></li>
-    <li><span class="dot">✕</span><span>Quando a mente sabotar — <em>"isso é bobagem"</em> — não brigue com o pensamento. Reconheça que ele está ali e volte à gratidão.</span></li>
+    <li><svg class="ico ico-quiet" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 20v-5h5"/></svg><span>Nos momentos vazios — trânsito, espera, fila — revisite mentalmente a visualização e repita uma afirmação. Trinta segundos bastam.</span></li>
+    <li><svg class="ico ico-quiet" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.3-2.9 7.7-7 9.5-4.1-1.8-7-5.2-7-9.5V6l7-3Z"/></svg><span>Quando algo desafiador aparecer, respire fundo e declare: <em>"Isso é temporário. Minha prosperidade é permanente."</em></span></li>
+    <li><svg class="ico ico-quiet" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6"/><path d="M15 9l-6 6"/></svg><span>Quando a mente sabotar — <em>"isso é bobagem"</em> — não brigue com o pensamento. Reconheça que ele está ali e volte à gratidão.</span></li>
   </ul>
 
   <h2 class="no-print">Desafio de 30 dias</h2>
   <p class="h2sub no-print">Toque em um dia para marcar a manhã concluída e escrever o registro daquele dia. Tudo fica salvo na sua conta.</p>
-  <p class="streak no-print">Manhãs concluídas: <strong id="doneCount">0</strong> de 30</p>
+  <div class="concluido no-print" id="concluido" hidden></div>
+  <div class="hoje-linha no-print" id="hojeLinha" hidden>
+    <span class="selo" id="hojeSelo"></span>
+    <button class="btn small primary" id="btnHoje">Marcar a manhã de hoje</button>
+  </div>
+  <p class="streak no-print">Manhãs concluídas: <strong id="doneCount">0</strong> de 30 · sequência atual: <strong id="streakCount">0</strong></p>
   <div class="grid30 no-print" id="grid30"></div>
   <p class="tracker-note no-print">Faltou um dia? Não recomece do zero — apenas não falhe duas vezes seguidas.</p>
 
@@ -430,12 +561,48 @@
       <p class="dp-title" id="dpTitle">Dia 1</p>
       <button class="btn small" id="dpToggle">Marcar manhã como concluída</button>
     </div>
+    <div class="dia1" id="dia1Box" hidden>
+      <span class="r-label">O que você escreveu no dia 1</span>
+      <p id="dia1Texto"></p>
+    </div>
     <textarea id="dpNote" placeholder="Registro do dia — o que sentiu, o que mudou, o que aconteceu."></textarea>
     <p class="save-status" id="saveStatus"></p>
   </div>
 
   <div class="export-row no-print">
     <button class="btn" id="btnExport">Exportar registros</button>
+  </div>
+
+  <div class="zona-dados no-print">
+    <h3>Privacidade e meus dados</h3>
+    <p>Seu protocolo, seu diário e suas gravações ficam apenas na sua conta — ninguém mais alcança.
+    Você pode levar seus registros com você pelo botão de exportar, e pode apagar tudo quando quiser.</p>
+    <details class="aviso" style="margin:0 0 18px">
+      <summary>Ler o aviso de privacidade</summary>
+      <p class="fecho" style="margin-top:14px">O aviso completo está na página de acesso, ao sair.
+      Em resumo: guardamos apenas o que você escreve e grava aqui, usamos isso só para montar e
+      mostrar o seu protocolo, ninguém além de você tem acesso, e a exclusão é imediata quando você
+      pedir. Dúvidas: <a href="mailto:contato@carlianelopes.com.br">contato@carlianelopes.com.br</a>.</p>
+    </details>
+  </div>
+
+  <div class="zona-dados zona-perigo no-print">
+    <h3>Apagar minha conta e meus dados</h3>
+    <p>Remove definitivamente o seu cadastro, as respostas do questionário, o diário dos 30 dias e
+    todas as gravações de voz. Não há como desfazer. Se quiser guardar seus registros antes,
+    use o botão de exportar acima.</p>
+    <div id="apagarPasso1">
+      <button class="btn small" id="btnApagarPedir">Quero apagar minha conta</button>
+    </div>
+    <div id="apagarPasso2" hidden>
+      <p style="color:var(--err)">Para confirmar, escreva <strong>APAGAR</strong> no campo abaixo.</p>
+      <input type="text" id="apagarConfirma" placeholder="APAGAR" autocomplete="off">
+      <div class="auth-actions" style="margin-top:0">
+        <button class="btn small" id="btnApagarConfirmar">Apagar definitivamente</button>
+        <button class="btn small" id="btnApagarCancelar">Cancelar</button>
+      </div>
+    </div>
+    <p class="save-status" id="apagarMsg"></p>
   </div>
 
   <footer>
@@ -470,6 +637,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   var saveTimer = null, selectedDay = null, recoveryMode = false;
   var confirmMode = false, confirmEmailAddr = "";
   var accessToken = null, pendingSave = false, draftTimer = null, inWizard = false;
+  var consentimentoDado = null;
 
   /* ---------- navegação entre páginas ---------- */
   function show(view){
@@ -498,9 +666,15 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(!sb){ authMsg("Configuração pendente (veja o aviso acima).", true); return; }
     var email = $("authEmail").value.trim(), pass = $("authPass").value;
     if(!email || pass.length < 6){ authMsg("Informe e-mail e uma senha com pelo menos 6 caracteres.", true); return; }
+    if(!$("consent").checked){
+      $("avisoPrivacidade").open = true;
+      authMsg("Para criar o acesso, leia o aviso de privacidade e marque a concordância.", true);
+      return;
+    }
     authMsg("Criando acesso…");
     sb.auth.signUp({email:email, password:pass}).then(function(r){
       if(r.error){ authMsg(traduzErro(r.error.message), true); return; }
+      consentimentoDado = {em: new Date().toISOString(), versao: "2026-08-31"};
       if(r.data && r.data.session){ authMsg(""); return; }
       confirmMode = true; confirmEmailAddr = email;
       $("confirmEmail").textContent = email;
@@ -557,6 +731,8 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
         if(r.data && r.data.data){ data = r.data.data; }
         else { data = { profile:null, days:{} }; }
         if(!data.days) data.days = {};
+        /* registra quando e sobre qual versão do aviso a pessoa consentiu */
+        if(consentimentoDado && !data.consent){ data.consent = consentimentoDado; touch(); }
       });
   }
   function persist(){
@@ -744,6 +920,12 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     "<p>Três respirações profundas:</p>"+
     "<p>1. solte a ansiedade sobre dinheiro<br>2. solte o medo de escassez<br>3. solte a necessidade de controlar o como.</p>"+
     "<p><strong>Eu confio. Eu entrego. Tudo está se desdobrando perfeitamente. Está feito.</strong></p>";
+  var ICONES = [
+    '<svg class="ico ico-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v3a8 8 0 0 0 16 0v-3"/><path d="M8 10V5.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V6.5a1.5 1.5 0 0 1 3 0V10"/></svg>',
+    '<svg class="ico ico-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.6"/></svg>',
+    '<svg class="ico ico-3" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h3l4 3V6L8 9H5Z"/><path d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg>',
+    '<svg class="ico ico-4" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
+    '<svg class="ico ico-5" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v7"/><path d="M9 6l3-3 3 3"/><path d="M4 14a8 8 0 0 0 16 0"/><path d="M4 14v-2"/><path d="M20 14v-2"/></svg>'];
   var READY_HTML = "<p>Deitado, confortável, olhos fechados. Toque em iniciar — o roteiro de cada minuto aparece aqui conforme o tempo passa. Use também para treinar na noite anterior.</p>";
 
   function scenesHtml(p){
@@ -778,6 +960,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     renderRecs();
     resetTimer();
     renderGrid();
+    renderHoje();
     panelHide();
   }
 
@@ -926,6 +1109,36 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
    * no clique em "Iniciar" com um silêncio de zero segundo — e já baixamos
    * as gravações, para o minuto virar sem espera.
    */
+  /**
+   * O sino.
+   *
+   * De olhos fechados, nada avisaria que o minuto virou — e abrir os olhos
+   * para conferir a tela é exatamente o que o método pede para não fazer.
+   * O tom é sintetizado aqui mesmo: duas senoides em quinta, com queda
+   * exponencial longa, que é o que faz soar como sino e não como alarme.
+   */
+  var ctxAudio = null;
+  function sino(forte){
+    if(!$("bellOn").checked) return;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      if(!ctxAudio) ctxAudio = new AC();
+      if(ctxAudio.state === "suspended") ctxAudio.resume();
+      var t = ctxAudio.currentTime, dur = forte ? 4.2 : 3.0;
+      [[528, 0.16],[792, 0.05]].forEach(function(par){
+        var osc = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+        osc.type = "sine";
+        osc.frequency.value = par[0];
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(par[1], t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g); g.connect(ctxAudio.destination);
+        osc.start(t); osc.stop(t + dur + 0.05);
+      });
+    }catch(e){}
+  }
+
   var vozLiberada = false;
   var SILENCIO = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
   function liberarVoz(){
@@ -935,6 +1148,10 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       player.src = SILENCIO;
       var pr = player.play();
       if(pr && pr.catch) pr.catch(function(){});
+    }catch(e){}
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(AC){ if(!ctxAudio) ctxAudio = new AC(); if(ctxAudio.state === "suspended") ctxAudio.resume(); }
     }catch(e){}
     var v = voiceMeta();
     for(var k in v){ if(v[k] && v[k].path) voiceSrc(parseInt(k,10)); }
@@ -952,6 +1169,119 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     });
   }
 
+  /**
+   * A meditação inteira num arquivo.
+   *
+   * As cinco gravações voltam a ser áudio, cada uma colocada no minuto a que
+   * pertence, com os sinos nas viradas — o mesmo ritual, agora tocável no
+   * celular sem abrir o site e sem sinal. A mixagem acontece numa linha de
+   * tempo de 300 segundos e sai em MP3, que qualquer aparelho toca.
+   */
+  var TOTAL_SEG = 300, TAXA = 44100;
+
+  function sinoOffline(ctx, quando, forte){
+    var dur = forte ? 4.2 : 3.0;
+    [[528, 0.16],[792, 0.05]].forEach(function(par){
+      var osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = par[0];
+      g.gain.setValueAtTime(0.0001, quando);
+      g.gain.exponentialRampToValueAtTime(par[1], quando + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, quando + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(quando); osc.stop(quando + dur + 0.05);
+    });
+  }
+  function baixarMsg(t){ $("baixarMsg").textContent = t; }
+
+  function montarMeditacao(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if(!AC || !OAC || !window.lamejs){
+      baixarMsg("Seu navegador não consegue montar o arquivo — tente pelo computador.");
+      return;
+    }
+    $("btnBaixar").disabled = true;
+    baixarMsg("Reunindo suas gravações…");
+
+    var decodificador = new AC();
+    var v = voiceMeta(), tarefas = [];
+    for(let i=0;i<5;i++){
+      let m = v[i];
+      if(!m || !m.path){ tarefas.push(Promise.resolve(null)); continue; }
+      tarefas.push(
+        sb.storage.from("vozes").download(m.path)
+          .then(function(r){ return (r.error || !r.data) ? null : r.data.arrayBuffer(); })
+          .then(function(ab){
+            if(!ab) return null;
+            return new Promise(function(ok){
+              decodificador.decodeAudioData(ab, function(buf){ ok(buf); }, function(){ ok(null); });
+            });
+          })
+          .catch(function(){ return null; })
+      );
+    }
+
+    Promise.all(tarefas).then(function(buffers){
+      baixarMsg("Montando os cinco minutos…");
+      var ctx = new OAC(1, TOTAL_SEG * TAXA, TAXA);
+      for(var i=0;i<5;i++){
+        sinoOffline(ctx, i * 60, false);
+        var buf = buffers[i];
+        if(!buf) continue;
+        var src = ctx.createBufferSource();
+        src.buffer = buf;
+        var g = ctx.createGain();
+        g.gain.value = 1;
+        src.connect(g); g.connect(ctx.destination);
+        /* a voz entra 1,5s depois do sino, para não pisar nele */
+        src.start(Math.min(i * 60 + 1.5, TOTAL_SEG - 0.1));
+      }
+      sinoOffline(ctx, TOTAL_SEG - 4.5, true);
+      return ctx.startRendering();
+    }).then(function(render){
+      baixarMsg("Convertendo para MP3… 0%");
+      var canal = render.getChannelData(0), n = canal.length;
+      var pcm = new Int16Array(n);
+      for(var i=0;i<n;i++){
+        var x = canal[i];
+        if(x > 1) x = 1; else if(x < -1) x = -1;
+        pcm[i] = x < 0 ? x * 0x8000 : x * 0x7FFF;
+      }
+      var enc = new lamejs.Mp3Encoder(1, TAXA, 64);
+      var partes = [], bloco = 57600, pos = 0;
+      function passo(){
+        var fim = Math.min(pos + bloco, n);
+        var b = enc.encodeBuffer(pcm.subarray(pos, fim));
+        if(b.length) partes.push(new Int8Array(b));
+        pos = fim;
+        baixarMsg("Convertendo para MP3… " + Math.round(pos / n * 100) + "%");
+        if(pos < n){ setTimeout(passo, 0); return; }
+        var resto = enc.flush();
+        if(resto.length) partes.push(new Int8Array(resto));
+        entregarAudio(new Blob(partes, {type:"audio/mpeg"}));
+      }
+      setTimeout(passo, 0);
+    }).catch(function(){
+      $("btnBaixar").disabled = false;
+      baixarMsg("Não conseguimos montar o arquivo desta vez. Tente de novo.");
+    });
+  }
+
+  function entregarAudio(blob){
+    var nome = (data.profile && data.profile.name)
+      ? data.profile.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-") + "-"
+      : "";
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "protocolo-5-minutos-" + nome + "meditacao.mp3";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    $("btnBaixar").disabled = false;
+    baixarMsg("Pronto — o arquivo foi baixado. Guarde no celular e pratique offline.");
+  }
+  $("btnBaixar").addEventListener("click", montarMeditacao);
+
   /* ---------- meditação guiada ---------- */
   var TOTAL = 300, elapsed = 0, running = false, iv = null, shownPhase = -1;
   function fmt(s){ var m=Math.floor(s/60), r=s%60; return m+":"+(r<10?"0":"")+r; }
@@ -961,7 +1291,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(elapsed >= TOTAL){
       $("tPhase").textContent = "Concluído";
       $("tCue").innerHTML = "<p>Abra os olhos. O dia começa programado por você.</p>";
-      if(shownPhase !== 99) pararVoz();
+      if(shownPhase !== 99){ pararVoz(); sino(true); }
       shownPhase = 99; return;
     }
     var idx = 0;
@@ -969,8 +1299,10 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     if(idx !== shownPhase){
       shownPhase = idx;
       $("tPhase").textContent = phases[idx].name;
+      $("tIco").innerHTML = ICONES[idx] || "";
       $("tCue").innerHTML = phases[idx].html || "<p>(sem roteiro — edite suas respostas)</p>";
       $("tCue").scrollTop = 0;
+      sino(false);
       tocarVoz(idx);
     }
   }
@@ -978,6 +1310,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   function resetTimer(){
     stopTimer(); elapsed = 0; shownPhase = -1;
     $("tPhase").textContent="Pronto para começar";
+    $("tIco").innerHTML = "";
     $("tCue").innerHTML = READY_HTML;
     $("tClock").textContent=fmt(TOTAL); $("tFill").style.width="0%";
   }
@@ -996,6 +1329,41 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
   $("tReset").addEventListener("click", resetTimer);
 
   /* ---------- tracker + diário ---------- */
+  /**
+   * Os 30 dias sao um calendario, nao uma lista de caixinhas.
+   *
+   * A primeira manha marcada fixa o inicio; dali em diante o dia de hoje e
+   * uma conta de datas. Quem pula um dia ve o dia pulado como perdido — e
+   * nao "empurra" o desafio para frente, que e o que faz o compromisso de
+   * 30 dias significar alguma coisa.
+   */
+  function hojeISO(){
+    var d = new Date();
+    return d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2);
+  }
+  function diasEntre(a, b){
+    var pa = a.split("-"), pb = b.split("-");
+    var da = Date.UTC(+pa[0], +pa[1]-1, +pa[2]), db = Date.UTC(+pb[0], +pb[1]-1, +pb[2]);
+    return Math.round((db - da) / 86400000);
+  }
+  /** Indice do dia de hoje no desafio: 0 = ainda nao comecou, >30 = terminou. */
+  function hojeIndex(){
+    if(!data.startDate) return 0;
+    return diasEntre(data.startDate, hojeISO()) + 1;
+  }
+  function sequencia(){
+    var i = hojeIndex(), n = 0;
+    if(i < 1) return 0;
+    if(i > 30) i = 30;
+    var d = data.days[i];
+    if(!d || !d.done) i--;          /* hoje ainda em aberto nao quebra a sequencia */
+    for(; i >= 1; i--){
+      var x = data.days[i];
+      if(x && x.done) n++; else break;
+    }
+    return n;
+  }
+
   function dayObj(n){
     if(!data.days[n]) data.days[n] = {done:false, note:""};
     return data.days[n];
@@ -1008,8 +1376,15 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     var grid = $("grid30"); grid.innerHTML = "";
     for(let i=1;i<=30;i++){
       var d = data.days[i] || {done:false, note:""};
+      var hi = hojeIndex();
+      var estado = "";
+      if(hi > 0 && !d.done){
+        if(i < hi) estado = " perdido";
+        else if(i > hi) estado = " futuro";
+      }
+      if(hi > 0 && i === hi) estado += " hoje";
       var b = document.createElement("button");
-      b.className = "day" + (d.done ? " done" : "") + (selectedDay===i ? " sel" : "");
+      b.className = "day" + (d.done ? " done" : "") + estado + (selectedDay===i ? " sel" : "");
       b.type = "button"; b.textContent = i;
       b.setAttribute("aria-pressed", d.done ? "true" : "false");
       b.setAttribute("aria-label", "Dia "+i+(d.done?" — concluído":"")+(d.note?" — com registro":""));
@@ -1018,6 +1393,35 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       grid.appendChild(b);
     }
     $("doneCount").textContent = doneTotal();
+    $("streakCount").textContent = sequencia();
+  }
+
+  /** A linha de hoje: onde a pessoa está no desafio e o que falta fazer agora. */
+  function renderHoje(){
+    var i = hojeIndex(), linha = $("hojeLinha"), selo = $("hojeSelo"), fim = $("concluido");
+    var total = doneTotal();
+    fim.hidden = true;
+    if(!data.profile){ linha.hidden = true; return; }
+    linha.hidden = false;
+    if(i === 0){
+      selo.className = "selo";
+      selo.textContent = "Dia 1 de 30";
+      $("btnHoje").textContent = "Marcar a manhã de hoje";
+      $("btnHoje").hidden = false;
+      return;
+    }
+    if(i > 30){
+      linha.hidden = true;
+      fim.hidden = false;
+      fim.innerHTML = "<strong>Os 30 dias se cumpriram.</strong>Você concluiu " + total +
+        " das 30 manhãs. Abra o dia 30 e releia o que escreveu no dia 1 — é essa comparação que mostra o que mudou.";
+      return;
+    }
+    var feito = !!(data.days[i] && data.days[i].done);
+    selo.className = "selo" + (feito ? " ok" : "");
+    selo.textContent = "Dia " + i + " de 30" + (feito ? " · feito" : " · hoje");
+    $("btnHoje").hidden = feito;
+    $("btnHoje").textContent = "Marcar a manhã de hoje";
   }
   function panelHide(){ selectedDay = null; $("dayPanel").hidden = true; }
   function selectDay(n){
@@ -1031,15 +1435,46 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
       : (n===30 ? "Registro do dia 30 — releia o dia 1 e escreva o que mudou."
                 : "Registro do dia — o que sentiu, o que mudou, o que aconteceu.");
     $("dpNote").value = d.note || "";
+    var d1 = data.days[1];
+    var mostrarDia1 = n === 30 && d1 && d1.note;
+    $("dia1Box").hidden = !mostrarDia1;
+    if(mostrarDia1) $("dia1Texto").textContent = d1.note;
     renderGrid();
     $("dayPanel").scrollIntoView({behavior:"smooth", block:"nearest"});
   }
+  function marcarDia(n, valor){
+    var d = dayObj(n);
+    d.done = valor;
+    if(d.done){
+      if(!data.startDate){
+        /* a primeira manha marcada ancora o calendario neste dia */
+        var hoje = hojeISO(), inicio = hoje;
+        if(n > 1){
+          var dt = new Date(hoje + "T12:00:00");
+          dt.setDate(dt.getDate() - (n - 1));
+          inicio = dt.getFullYear() + "-" + ("0"+(dt.getMonth()+1)).slice(-2) + "-" + ("0"+dt.getDate()).slice(-2);
+        }
+        data.startDate = inicio;
+      }
+      if(!d.date) d.date = hojeISO();
+    }
+    renderGrid();
+    renderHoje();
+    touch();
+  }
+
+  $("btnHoje").addEventListener("click", function(){
+    var i = hojeIndex() || 1;
+    if(i > 30) return;
+    marcarDia(i, !(data.days[i] && data.days[i].done));
+    selectDay(i);
+  });
+
   $("dpToggle").addEventListener("click", function(){
     if(selectedDay===null) return;
     var d = dayObj(selectedDay);
-    d.done = !d.done;
+    marcarDia(selectedDay, !d.done);
     $("dpToggle").textContent = d.done ? "Concluída ✓ (desmarcar)" : "Marcar manhã como concluída";
-    renderGrid(); touch();
   });
   $("dpNote").addEventListener("input", function(){
     if(selectedDay===null) return;
@@ -1069,6 +1504,61 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     a.download = "protocolo-5-minutos-registros.txt";
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+
+  /* ---------- apagar a conta e tudo o que ela guarda ---------- */
+  $("btnApagarPedir").addEventListener("click", function(){
+    $("apagarPasso1").hidden = true;
+    $("apagarPasso2").hidden = false;
+    $("apagarConfirma").focus();
+  });
+  $("btnApagarCancelar").addEventListener("click", function(){
+    $("apagarPasso2").hidden = true;
+    $("apagarPasso1").hidden = false;
+    $("apagarConfirma").value = "";
+    $("apagarMsg").textContent = "";
+  });
+  $("btnApagarConfirmar").addEventListener("click", function(){
+    if($("apagarConfirma").value.trim().toUpperCase() !== "APAGAR"){
+      $("apagarMsg").textContent = "Escreva APAGAR para confirmar.";
+      return;
+    }
+    $("btnApagarConfirmar").disabled = true;
+    $("apagarMsg").textContent = "Apagando…";
+
+    /* primeiro o que o próprio navegador alcança, com a autoridade da pessoa */
+    var v = voiceMeta(), caminhos = [];
+    for(var k in v){ if(v[k] && v[k].path) caminhos.push(v[k].path); }
+    var limpaAudio = caminhos.length
+      ? sb.storage.from("vozes").remove(caminhos).catch(function(){})
+      : Promise.resolve();
+
+    limpaAudio
+      .then(function(){ return sb.from("protocols").delete().eq("user_id", user.id); })
+      /* depois o cadastro em si, que só o servidor pode remover */
+      .then(function(){
+        return fetch("/api/protocolo/apagar-conta", {
+          method: "POST",
+          headers: {"Authorization": "Bearer " + accessToken}
+        });
+      })
+      .then(function(r){
+        if(r && r.ok){
+          data = { profile:null, days:{} };
+          pendingSave = false;
+          clearTimeout(saveTimer); clearTimeout(draftTimer);
+          return sb.auth.signOut().then(function(){
+            alert("Sua conta e todos os seus dados foram apagados.");
+            window.location.reload();
+          });
+        }
+        throw new Error("falhou");
+      })
+      .catch(function(){
+        $("btnApagarConfirmar").disabled = false;
+        $("apagarMsg").textContent = "Seus dados foram removidos, mas o cadastro em si não pôde ser apagado agora. " +
+          "Escreva para contato@carlianelopes.com.br que concluímos a exclusão.";
+      });
   });
 
   /* ---------- topo ---------- */
