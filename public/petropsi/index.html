@@ -858,7 +858,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="2.3.0", PROVA=new Date(2026,10,29);
+const VERSAO="2.3.1", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq, ANUL=(CORPUS.anuladas||[]);
@@ -2608,17 +2608,72 @@ async function exportaMapa(id,tipo){
  img.onerror=()=>toast("Não consegui gerar o PNG","Exporte em SVG, que abre em qualquer navegador.","");
  img.src=url;
 }
-async function baixar(nome,dados,mime,ehDataUrl){
- let dl=null;
- try{ if(window.claude&&window.claude.use) dl=await window.claude.use("downloads"); }catch(e){}
- if(dl){ try{ await dl.save({filename:nome,data:ehDataUrl?dados.split(",")[1]:dados,encoding:ehDataUrl?"base64":undefined}); toast("Exportado",nome,"ok"); }
-   catch(e){ toast("Download não concluído","O visualizador recusou ou você cancelou.",""); } return; }
+/* =========================================================
+   ENTREGA DE ARQUIVO
+   Duas situações diferentes, e confundi-las foi o bug:
+   · No endereço dela (petropsi.carlianelopes.com.br) a página é normal
+     e o download por âncora funciona para qualquer extensão.
+   · No visualizador do claude.ai a página roda em sandbox: âncora de
+     download é inerte, e a única saída é a capacidade "downloads", que
+     mostra uma confirmação ao usuário. Ela só aceita as extensões da
+     lista: gif png jpg jpeg webp mp4 webm txt json md — e, quando o
+     conjunto estendido está ligado, docx pptx epub csv ttf html svg pdf.
+     .ics NÃO está em nenhuma das duas listas. Por isso a exportação do
+     calendário caía sempre no plano B, em silêncio: o erro era
+     "rejected_extension", e o meu try/catch engolia o código.
+   ========================================================= */
+const MSG_DOWNLOAD={
+ rejected_extension:"O visualizador não aceita esse tipo de arquivo.",
+ extension_not_enabled:"Esse tipo de arquivo não está liberado neste visualizador.",
+ too_large:"O arquivo passou de 16 MB.",
+ declined:"Você recusou o download — nada foi salvo.",
+ rate_limited:"Já havia uma confirmação de download aberta. Espere um instante e tente de novo.",
+ bad_request:"O arquivo saiu malformado. Isso é falha do sistema, não sua — me avise.",
+ unavailable:"Este visualizador não salva arquivos."
+};
+async function capDownloads(){
+ try{ if(window.claude&&window.claude.use) return await window.claude.use("downloads"); }catch(e){}
+ return null;
+}
+// Salva pela capacidade do visualizador. Devolve {ok} ou {erro, codigo}.
+async function salvaPelaCapacidade(dl,nome,dados){
+ try{ await dl.save({filename:nome,data:dados}); return {ok:true,nome:nome}; }
+ catch(e){
+  const cod=(e&&e.code)||"unavailable";
+  return {ok:false,codigo:cod,erro:MSG_DOWNLOAD[cod]||MSG_DOWNLOAD.unavailable};
+ }
+}
+// Download por âncora — funciona fora do sandbox, isto é, no endereço dela.
+function baixaPorAncora(nome,dados,mime){
  try{
-  const a=document.createElement("a");
-  a.href=ehDataUrl?dados:URL.createObjectURL(new Blob([dados],{type:mime}));
-  a.download=nome;document.body.appendChild(a);a.click();a.remove();
-  toast("Exportado",nome,"ok");
- }catch(e){ toast("Não consegui baixar","Tente pelo endereço hospedado, onde o download funciona.",""); }
+  const bl=(dados instanceof Blob)?dados:new Blob([dados],{type:mime||"application/octet-stream"});
+  const url=URL.createObjectURL(bl);
+  const a=document.createElement("a");a.href=url;a.download=nome;a.rel="noopener";
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
+  return true;
+ }catch(e){ return false; }
+}
+function dataUrlParaBlob(u,mime){
+ const b64=String(u).split(",")[1]||"";
+ const bin=atob(b64);const arr=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+ return new Blob([arr],{type:mime||"application/octet-stream"});
+}
+async function baixar(nome,dados,mime,ehDataUrl){
+ // PNG vinha como texto base64 e chegava corrompido: a capacidade não tem
+ // campo "encoding", ela grava a string como está. Binário tem de ir em Blob.
+ const carga=ehDataUrl?dataUrlParaBlob(dados,mime):dados;
+ const dl=await capDownloads();
+ if(dl){
+  const r=await salvaPelaCapacidade(dl,nome,carga);
+  if(r.ok){toast("Arquivo salvo",nome,"ok");return true}
+  toast("Não salvei o arquivo",r.erro,"");
+  return false;
+ }
+ if(baixaPorAncora(nome,carga,mime)){toast("Arquivo baixado",nome,"ok");return true}
+ toast("Não consegui baixar","Abra o PETROPSI no endereço hospedado, onde o download funciona.","");
+ return false;
 }
 
 /* ---------------- VADE-MÉCUM ---------------- */
@@ -4394,47 +4449,59 @@ function montaICS(opts){
 async function exportaICS(opts){
  const r=montaICS(opts);
  if(!r.eventos){toast("Nada para exportar","Não há dias, revisões nem datas futuras neste recorte.","");return}
- const nome="petropsi-"+hoje()+".ics";
- let entregue=false;
- // 1º caminho: capacidade de download do visualizador
- try{
-  if(window.claude&&window.claude.use){
-   const dl=await window.claude.use("downloads");
-   if(dl){await dl.save({filename:nome,data:r.texto});entregue=true;}
+ const base="petropsi-agenda-"+hoje();
+ const dl=await capDownloads();
+
+ if(dl){
+  // No visualizador do claude.ai. Tenta .ics primeiro: no dia em que a lista
+  // de extensões passar a aceitar calendário, funciona sem mudar nada aqui.
+  let res=await salvaPelaCapacidade(dl,base+".ics",r.texto);
+  if(res.ok){toast("Calendário salvo",res.nome+" — abra no celular.","ok");return}
+  if(res.codigo==="declined"||res.codigo==="rate_limited"){toast("Download não concluído",res.erro,"");return}
+  if(res.codigo==="rejected_extension"||res.codigo==="extension_not_enabled"){
+   // O caminho que de fato funciona aqui: .txt está na lista permitida.
+   // O conteúdo é idêntico; só o nome precisa de um ajuste no celular.
+   res=await salvaPelaCapacidade(dl,base+".ics.txt",r.texto);
+   if(res.ok){mostraICS(r,base,"txt");return}
+   if(res.codigo==="declined"||res.codigo==="rate_limited"){toast("Download não concluído",res.erro,"");return}
   }
- }catch(e){}
- // 2º caminho: âncora de download — funciona no endereço próprio dela
- if(!entregue){
-  try{
-   const bl=new Blob([r.texto],{type:"text/calendar;charset=utf-8"});
-   const url=URL.createObjectURL(bl);
-   const a=document.createElement("a");a.href=url;a.download=nome;a.rel="noopener";
-   document.body.appendChild(a);a.click();
-   setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
-   entregue="talvez";
-  }catch(e){}
+  mostraICS(r,base,"falhou",res.erro);
+  return;
  }
- // 3º caminho, sempre disponível: o texto na tela para copiar
- mostraICS(r,nome,entregue);
+
+ // No endereço dela a página não está em sandbox: baixa direto, com nome e
+ // tipo certos, e o celular reconhece como calendário sem passo nenhum.
+ if(baixaPorAncora(base+".ics",r.texto,"text/calendar;charset=utf-8")){
+  toast("Calendário baixado",r.eventos+" eventos em "+base+".ics","ok");
+  mostraICS(r,base,"ancora");
+  return;
+ }
+ mostraICS(r,base,"falhou");
 }
-function mostraICS(r,nome,entregue){
- modal('<h3 style="margin:0 0 4px">Calendário gerado — '+r.eventos+' evento(s)</h3>'+
-  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 11px;line-height:1.6">'+
-  (entregue===true?'O arquivo <b>'+esc(nome)+'</b> foi baixado. Abra-o no celular e o calendário importa tudo, com alarme às 8h de cada dia.':
-   entregue==="talvez"?'Tentei baixar <b>'+esc(nome)+'</b>. Se o download não apareceu — alguns visualizadores bloqueiam —, copie o texto abaixo, cole num arquivo com a extensão <b>.ics</b> e abra no celular.':
-   'Copie o texto abaixo, cole num arquivo com a extensão <b>.ics</b> e abra no celular.')+
-  '</p>'+
-  '<div style="font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-p);padding:10px 12px;margin-bottom:11px;line-height:1.55">'+
-  '<b>No iPhone:</b> salve o arquivo em Arquivos e toque nele.<br><b>No Android:</b> abra o Google Agenda no computador, Configurações → Importar e exportar → Importar.</div>'+
-  '<textarea id="icsT" readonly style="width:100%;height:170px;font-family:\'JetBrains Mono\',monospace;font-size:10.5px;padding:10px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface-2);white-space:pre;overflow:auto"></textarea>'+
-  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:13px"><button class="btn" id="icsC">Copiar o calendário</button><button class="btn sec" id="icsX">Fechar</button></div>');
+function mostraICS(r,base,via,erro){
+ const passos={
+  txt:'<b>Você tem o arquivo <code>'+esc(base)+'.ics.txt</code>.</b> Falta uma coisa só: <b>tirar o <code>.txt</code> do fim do nome</b>, para ficar <code>'+esc(base)+'.ics</code>. Depois é só abrir.'
+      +'<div style="margin-top:9px"><b>No iPhone:</b> app <b>Arquivos</b> → Downloads → segure o arquivo → <b>Renomear</b> → apague o <code>.txt</code> → toque nele → <b>Adicionar tudo</b>.'
+      +'<br><b>No Android:</b> app <b>Arquivos</b> → Downloads → três pontos → <b>Renomear</b> → apague o <code>.txt</code> → toque no arquivo → Google Agenda.'
+      +'<br><b>No computador:</b> renomeie e dê dois cliques, ou Google Agenda → engrenagem → <b>Importar e exportar</b> → Importar.</div>'
+      +'<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--ink-3)">Por que esse passo existe: o visualizador do claude.ai só salva uma lista fixa de tipos de arquivo, e calendário não está nela. <b>Abrindo o PETROPSI em petropsi.carlianelopes.com.br o arquivo já sai como <code>.ics</code></b> e o passo some.</div>',
+  ancora:'<b>O arquivo <code>'+esc(base)+'.ics</code> foi baixado.</b> Abra no celular e o calendário importa tudo, com alarme às 8h de cada dia.'
+      +'<div style="margin-top:9px"><b>No iPhone:</b> Arquivos → Downloads → toque no arquivo → <b>Adicionar tudo</b>.'
+      +'<br><b>No Android e no computador:</b> Google Agenda → engrenagem → <b>Importar e exportar</b> → Importar.</div>',
+  falhou:'<b>Não consegui entregar o arquivo'+(erro?' — '+esc(erro):'')+'.</b> O conteúdo está aqui embaixo: copie, cole num arquivo de texto e salve com o nome <code>'+esc(base)+'.ics</code>.'
+ };
+ modal('<h3 style="margin:0 0 6px">Calendário gerado — '+r.eventos+' evento(s)</h3>'+
+  '<div style="font-size:13.5px;color:var(--ink-2);margin:0 0 12px;line-height:1.6">'+(passos[via]||passos.falhou)+'</div>'+
+  '<details style="margin-bottom:11px"><summary style="cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:600">Ver o conteúdo para copiar à mão</summary>'+
+  '<textarea id="icsT" readonly style="width:100%;height:150px;font-family:\'JetBrains Mono\',monospace;font-size:10.5px;padding:10px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface-2);white-space:pre;overflow:auto;margin-top:9px"></textarea></details>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="icsC">Copiar o calendário</button><button class="btn sec" id="icsX">Fechar</button></div>');
  $("#icsT").value=r.texto;
  $("#icsX").onclick=fechaModal;
  $("#icsC").onclick=()=>{
-  const t=$("#icsT");t.select();t.setSelectionRange(0,999999);
-  const ok=()=>{toast("Copiado","Cole num arquivo .ics e abra no celular.","ok")};
-  if(navigator.clipboard)navigator.clipboard.writeText(r.texto).then(ok).catch(()=>{try{document.execCommand("copy");ok()}catch(e){}});
-  else{try{document.execCommand("copy");ok()}catch(e){}}
+  const ok=()=>toast("Copiado","Cole num arquivo de texto e salve como "+base+".ics","ok");
+  const manual=()=>{const t=$("#icsT");t.closest("details").open=true;t.select();try{document.execCommand("copy");ok()}catch(e){toast("Não consegui copiar","Selecione o texto e copie à mão.","")}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(r.texto).then(ok).catch(manual);
+  else manual();
  };
 }
 function abreExportarICS(){
@@ -5393,7 +5460,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
  v.appendChild(c4);
 };
 
