@@ -749,6 +749,10 @@ table.t tr:last-child td{border-bottom:0}
 .dia{display:grid;grid-template-columns:82px 1fr auto;gap:13px;padding:10px 15px;border-bottom:1px solid var(--line);align-items:start}
 @media(max-width:640px){.dia{grid-template-columns:70px 1fr}.dia>div:last-child{grid-column:1/-1}}
 .dia .ns button.extra{border-style:dashed;border-color:var(--accent);color:var(--accent)}
+.dia .ns button.rever{background:var(--surface-2);border-style:dotted}
+.dia .ns button.feito{border-color:var(--ok);color:var(--ok);background:var(--ok-soft)}
+.dia .ns button.tarefa{border-color:var(--acao);color:var(--acao);font-weight:700}
+.dia .ns button.tarefa.feito{border-color:var(--ok);color:var(--ok)}
 .dia:last-child{border-bottom:0}
 .dia.hoje{background:var(--accent-soft)}
 .dia.passado{opacity:.5}
@@ -858,7 +862,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="2.3.1", PROVA=new Date(2026,10,29);
+const VERSAO="2.4.0", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq, ANUL=(CORPUS.anuladas||[]);
@@ -1643,17 +1647,109 @@ function nosEmAndamento(){
  if(ul&&ul.arg&&ul.em&&diasEntre(ul.em,hoje())<=3)add(ul.arg);
  return out;
 }
-function novoDia(iso,ordem,cursor,diasNovo,presos){
+// Um nó cujo conteúdo já foi lido do começo ao fim NÃO volta como conteúdo
+// novo — quem cuida dele é a fila de Revisões, com a escada 1/7/30/60/90.
+// Sem essa separação, o nó estudado hoje reaparecia dias depois já verde,
+// porque a leitura do conteúdo pesa só 20% no domínio e a prioridade
+// continuava alta.
+// "Feito" num dia do plano é feito NAQUELE DIA, não em algum dia do passado.
+// Sem isso, um nó que ela leu em setembro aparecia verde no dia de revisão de
+// novembro — como se não houvesse nada a fazer, quando havia.
+function feitoNoDia(noId,data,fase){
+ const D=(diarioCompleto()[data]||diaVazio());
+ const tocouNoDia=(D.nos[noId]||0)>0;
+ if(fase==="revisao")return tocouNoDia;          // dia de revisão: só vale revisar naquele dia
+ if(data<hoje())return tocouNoDia;               // dia passado: o que houve, houve
+ return conteudoConcluido(noId)||tocouNoDia;     // dia futuro de conteúdo novo
+}
+function conteudoConcluido(noId){
+ const tot=((CONTMAP[noId]||{blocos:[]}).blocos||[]).length;
+ if(!tot)return false;
+ return (((S.conteudoLido[noId]||{}).blocos)||[]).length>=tot;
+}
+const GAP_MINIMO=14; // dias entre duas aparições do mesmo nó no calendário
+/* =========================================================
+   TAREFAS DO PLANO QUE NÃO SÃO NÓ
+   O protocolo prometia "um simulado completo por semana em condição real
+   de 4h30" e não agendava nenhum. Promessa em texto que o calendário não
+   cumpre é pior do que não prometer. Agora o simulado entra como item do
+   dia, no dia da semana em que ela tem mais tempo.
+   ========================================================= */
+const MIN_SIMULADO=270;      // 4h30
+function melhorDiaDaSemana(){
+ const d=dispo();let melhor=6,max=-1;
+ for(let i=0;i<7;i++){if(d[i]>max){max=d[i];melhor=i}}
+ return {dow:melhor,minutos:max};
+}
+// Um simulado por semana, a partir da segunda semana: fazer prova inteira
+// sem ter visto conteúdo nenhum ensina pouco e desanima muito.
+function tarefaDoDia(iso,fase){
+ const md=melhorDiaDaSemana();
+ if(md.minutos<60)return null;
+ const dt=new Date(iso+"T12:00:00");
+ if(dt.getDay()!==md.dow)return null;
+ const semanas=Math.floor(diasEntre(hoje(),iso)/7);
+ if(semanas<1&&fase!=="revisao")return null;
+ const cabe=md.minutos>=MIN_SIMULADO;
+ if(cabe)return {tipo:"simuladoCompleto",rotulo:"Simulado completo — 70 questões, 4h30",
+   nota:"Em condição real: sem consulta, sem pausa, cronômetro rodando."};
+ return {tipo:"simuladoBloco",rotulo:"Simulado por bloco — 35 questões",
+   nota:"O seu dia mais longo tem "+hhmm(md.minutos)+", e o simulado completo pede 4h30. Este é a versão que cabe; reserve um sábado maior de vez em quando para fazer o completo."};
+}
+function tarefaFeita(iso,tarefa){
+ if(!tarefa)return false;
+ return (S.simulados||[]).some(x=>x.data===iso&&
+   (tarefa.tipo==="simuladoCompleto"?x.modo==="completo":true));
+}
+function rodaTarefa(t){
+ if(!t)return;
+ if(t.tipo==="simuladoCompleto"){iniciaSessao({modo:"completo"});return}
+ iniciaSessao({modo:"cronometrado",n:35,titulo:"Simulado por bloco"});
+}
+function novoDia(iso,ordem,cursor,diasNovo,presos,usados){
  const pr=protocoloDoDia(iso,diasNovo);
  const ns=[];
  if(pr.porDia<=0&&!(presos&&presos.length))return {data:iso,nos:[],fase:pr.fase,extras:[],cumpridos:[],folga:true};
- if(presos&&presos.length)presos.forEach(id=>{if(ns.indexOf(id)<0&&ns.length<pr.porDia+presos.length)ns.push(id)});
+ if(presos&&presos.length)presos.forEach(id=>{if(ns.indexOf(id)<0)ns.push(id)});
+ const diaN=diasEntre(hoje(),iso);
+ const longe=id=>{
+  if(!usados)return true;
+  const u=usados[id];
+  return u===undefined||(diaN-u)>=GAP_MINIMO;
+ };
+ // Na fase de conteúdo novo, o nó já concluído fica de fora — ele é assunto
+ // da fila de Revisões. Na fase de revisão (os últimos dias antes da prova),
+ // o pool volta a ser todo mundo, que é justamente o ponto daquela fase.
+ const soNaoConcluidos=(pr.fase!=="revisao");
  let giros=0;
  while(ns.length<pr.porDia&&giros<ordem.length*2){
   const id=ordem[cursor.i%ordem.length];cursor.i++;giros++;
-  if(ns.indexOf(id)<0)ns.push(id);
+  if(ns.indexOf(id)>=0)continue;
+  if(soNaoConcluidos&&conteudoConcluido(id))continue;
+  if(!longe(id))continue;
+  ns.push(id);
  }
- return {data:iso,nos:ns,fase:pr.fase,extras:[],cumpridos:[],minutos:pr.minutos};
+ // acabou o conteúdo novo disponível: o dia vira de revisão, e é dito
+ let revisaoForcada=false;
+ if(ns.length<pr.porDia&&soNaoConcluidos){
+  const candidatos=ordem.filter(id=>ns.indexOf(id)<0&&longe(id));
+  for(const id of candidatos){
+   if(ns.length>=pr.porDia)break;
+   ns.push(id);revisaoForcada=true;
+  }
+ }
+ if(ns.length<pr.porDia&&!soNaoConcluidos){
+  let g2=0;
+  while(ns.length<pr.porDia&&g2<ordem.length*2){
+   const id=ordem[cursor.i%ordem.length];cursor.i++;g2++;
+   if(ns.indexOf(id)<0)ns.push(id);
+  }
+ }
+ if(usados)ns.forEach(id=>{usados[id]=diaN});
+ const fase=(pr.fase==="revisao"||revisaoForcada)?"revisao":"novo";
+ const tarefa=tarefaDoDia(iso,fase);
+ return {data:iso,nos:ns,fase:fase,extras:[],cumpridos:[],minutos:pr.minutos,
+         tarefa:tarefa||undefined,revisaoForcada:revisaoForcada||undefined};
 }
 // Reconstrói os dias JÁ PASSADOS a partir do diário, para que ela veja o que fez em cada um.
 function diasPassadosDoDiario(desde){
@@ -1679,6 +1775,7 @@ function remontaFuturo(p,opt){
  const ordem=NOS.map(n=>({id:n.id,p:prioridade(n.id)})).sort((a,b)=>b.p-a.p).map(x=>x.id);
  const cursor={i:0};
  const presos=nosEmAndamento().slice(0,2);
+ const usados={};   // nó -> índice do dia em que foi usado pela última vez
  // 1) tudo que é passado sobrevive exatamente como está
  const dias=[];
  const passados=Object.keys(antigos).filter(d=>d<hoje()).sort();
@@ -1692,8 +1789,12 @@ function remontaFuturo(p,opt){
   const dt=new Date();dt.setDate(dt.getDate()+k);
   const iso=dt.toISOString().slice(0,10);
   const velho=antigos[iso];
-  if(velho&&velho.fixado&&!opt.apagaFixados){dias.push(velho);continue}
-  const novo=novoDia(iso,ordem,cursor,diasNovo,k===0?presos:null);
+  if(velho&&velho.fixado&&!opt.apagaFixados){
+   (velho.nos||[]).forEach(id=>{usados[id]=k});
+   dias.push(velho);continue;
+  }
+  if(velho&&velho.data>=hoje()&&!opt.apagaFixados){} // segue adiante
+  const novo=novoDia(iso,ordem,cursor,diasNovo,k===0?presos:null,usados);
   if(velho){ // o que ela já fez e escolheu naquele dia é cumulativo
    novo.extras=(velho.extras||[]).slice();
    novo.cumpridos=(velho.cumpridos||[]).slice();
@@ -1724,10 +1825,20 @@ function refazDia(data){
  const fim=planoFimISO();
  const diasNovo=Math.max(1,diasEntre(hoje(),fim)-RESERVA_REVISAO);
  const ordem=NOS.map(n=>({id:n.id,p:prioridade(n.id)})).sort((a,b)=>b.p-a.p).map(x=>x.id);
- const usados=new Set();
- P.dias.forEach(d=>{if(d.data!==data&&d.data>=hoje())(d.nos||[]).forEach(x=>usados.add(x))});
- const ordem2=ordem.filter(x=>!usados.has(x)).concat(ordem.filter(x=>usados.has(x)));
- const novo=novoDia(data,ordem2,{i:0},diasNovo,data===hoje()?nosEmAndamento().slice(0,2):null);
+ // respeita a distância mínima em relação aos dias vizinhos
+ const alvoN=diasEntre(hoje(),data);
+ const usados={};
+ P.dias.forEach(d=>{
+  if(d.data===data||d.data<hoje())return;
+  const n=diasEntre(hoje(),d.data);
+  (d.nos||[]).forEach(x=>{
+   const dist=Math.abs(n-alvoN);
+   if(usados[x]===undefined||dist<Math.abs(usados[x]-alvoN))usados[x]=n;
+  });
+ });
+ const naoConcluidos=ordem.filter(x=>!conteudoConcluido(x));
+ const ordem2=naoConcluidos.concat(ordem.filter(x=>conteudoConcluido(x)));
+ const novo=novoDia(data,ordem2,{i:0},diasNovo,data===hoje()?nosEmAndamento().slice(0,2):null,usados);
  if(i>=0){novo.extras=(P.dias[i].extras||[]).slice();novo.cumpridos=(P.dias[i].cumpridos||[]).slice();P.dias[i]=novo}
  else{P.dias.push(novo);P.dias.sort((a,b)=>a.data<b.data?-1:1)}
  S.plano=P;salva();
@@ -1867,9 +1978,33 @@ function migracaoPlano(){
  remontaFuturo(p&&p.dias&&p.dias.length?p:null,{apagaFixados:true});
  S.planoAnterior=null;
  S.migracoes.plano200=hoje();
+ S.migracoes.plano232=hoje();
  salva();
  setTimeout(()=>toast("Plano refeito e histórico recuperado",
   "Os dias anteriores voltaram, com o que você fez em cada um. O calendário de hoje em diante foi remontado do zero, como você pediu.","ok"),1200);
+}
+/* Uma vez só, ao subir para a 2.3.2: o calendário que já estava na máquina
+   dela foi montado com a regra antiga, em que um nó com o conteúdo já lido
+   voltava a concorrer por vaga de conteúdo novo. Remonta o futuro com a
+   regra nova, sem tocar no passado nem nos dias que ela travou. */
+function migracaoPlanoRepeticao(){
+ S.migracoes=S.migracoes||{};
+ if(S.migracoes.plano232)return;
+ const p=S.plano;
+ S.migracoes.plano232=hoje();
+ if(!(p&&p.dias&&p.dias.length)){salva();return}
+ const repetidos=(()=>{
+  const fut=p.dias.filter(d=>d.data>=hoje());
+  const q={};fut.forEach((d,i)=>(d.nos||[]).forEach(n=>(q[n]=q[n]||[]).push(i)));
+  return Object.keys(q).filter(n=>conteudoConcluido(n)&&q[n].length>0).length;
+ })();
+ remontaFuturo(p,{apagaFixados:false});
+ S.migracoes.plano232=hoje();
+ salva();
+ if(repetidos){
+  setTimeout(()=>toast("Repetição no plano corrigida",
+   repetidos+" assunto(s) que você já leu inteiro estavam voltando como conteúdo novo. Saíram do calendário — agora quem cuida deles é a fila de Revisões.","ok"),1500);
+ }
 }
 
 /* ---------------- PAINEL ---------------- */
@@ -2013,11 +2148,15 @@ VIEWS.painel=function(v){
   const st=situacaoNo(id,hoje());
   const retomando=(H.presos||[]).indexOf(id)>=0;
   const b=el("button","raillink faixatom tom-"+tomDoNo(id));b.style.cssText="align-items:flex-start;padding:10px 10px 10px 14px;border:1px solid "+(tipo==="extra"?"var(--tom)":"var(--line)")+";background:var(--surface);margin-bottom:7px"+(tipo==="extra"?";border-style:dashed":"");
-  const selo=st.concluido?'<span class="pill ok" style="margin-top:1px">✓</span>':'<span class="pill acc" style="margin-top:1px">'+(i+1)+'º</span>';
+  const feitoHoje=feitoNoDia(id,hoje(),H.fase);
+  const selo=feitoHoje?'<span class="pill ok" style="margin-top:1px">✓</span>':'<span class="pill acc" style="margin-top:1px">'+(i+1)+'º</span>';
+  const concl2=conteudoConcluido(id);
   const etiqueta=tipo==="extra"?'<span class="pill" style="font-size:9px;vertical-align:middle">extra seu</span>':
                  retomando?'<span class="pill" style="font-size:9px;vertical-align:middle">retomando</span>':
+                 concl2?'<span class="pill" style="font-size:9px;vertical-align:middle">revisão</span>':
                  '<span class="pill acc" style="font-size:9px;vertical-align:middle">obrigatório</span>';
-  const razao=st.concluido?"Conteúdo concluído. Vale treinar questões deste nó.":
+  const razao=feitoHoje?"Você já mexeu neste nó hoje.":
+    concl2?"Você já leu este conteúdo inteiro — hoje ele volta como revisão. Vale treinar as questões dele.":
     retomando?"Você começou este nó e ainda não terminou — ele fica aqui até você fechar.":
     st.tot?("Você leu "+st.lidos+" de "+st.tot+" blocos."):esc(porqueEstudar(id));
   b.innerHTML=selo+'<span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(nn.titulo)+' '+etiqueta+'</b><span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+razao+'</span></span>';
@@ -2028,6 +2167,18 @@ VIEWS.painel=function(v){
  if(H.extras&&H.extras.length){
   cp.appendChild(el("div",null,'<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);margin:9px 0 5px">além do protocolo, por sua escolha</div>'));
   H.extras.forEach((id,i)=>{const b=linhaNo(id,i,"extra");if(b)cp.appendChild(b)});
+ }
+ const tHoje=(function(){try{const dd=diaDoPlano(hoje());return dd&&dd.tarefa?dd.tarefa:null}catch(e){return null}})();
+ if(tHoje){
+  const feitoT=tarefaFeita(hoje(),tHoje);
+  const bt=el("button","raillink faixatom tom-diag");
+  bt.style.cssText="align-items:flex-start;padding:10px 10px 10px 14px;border:1px solid var(--acao);background:var(--surface);margin-bottom:7px";
+  bt.innerHTML='<span class="pill '+(feitoT?"ok":"acc")+'" style="margin-top:1px">'+(feitoT?"✓":"hoje")+'</span>'+
+   '<span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--ink)">'+esc(tHoje.rotulo)+
+   ' <span class="pill" style="font-size:9px;vertical-align:middle">'+(feitoT?"feito":"do protocolo")+'</span></b>'+
+   '<span style="font-size:12px;color:var(--ink-3);display:block;margin-top:2px">'+esc(tHoje.nota)+'</span></span>';
+  bt.onclick=()=>rodaTarefa(tHoje);
+  cp.appendChild(bt);
  }
  const rod=el("div");rod.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px";
  const bes=el("button","btn sec sm","Acrescentar assuntos");bes.onclick=escolheHoje;rod.appendChild(bes);
@@ -2218,17 +2369,35 @@ VIEWS.plano=function(v){
    const marca=(id,tipo)=>{
     const nn=NOMAP[id];if(!nn)return;
     const m=mastery(id);
-    const st=situacaoNo(id,d.data);
-    const cor=st.concluido?"var(--ok)":m>=.75?"var(--ok)":m>=.5?"var(--accent)":m>=.25?"var(--warn)":"var(--crit)";
-    const b=el("button",tipo==="extra"?"extra":null,'<i style="background:'+cor+'"></i>'+(st.concluido?"✓ ":"")+esc(nn.titulo.length>42?nn.titulo.slice(0,40)+"…":nn.titulo));
-    b.title=id+" · domínio "+pct(m)+"%"+(tipo==="extra"?" · escolha sua":" · obrigatório do protocolo");
+    const concl=conteudoConcluido(id);
+    const eRevisao=concl||d.fase==="revisao";
+    const feito=feitoNoDia(id,d.data,d.fase);
+    const cor=m>=.75?"var(--ok)":m>=.5?"var(--accent)":m>=.25?"var(--warn)":"var(--crit)";
+    // Conteúdo já lido do começo ao fim entra como REVISÃO, não como novo —
+    // e a etiqueta diz isso, senão o ✓ verde parece erro do sistema.
+    const rot=(feito?"✓ ":eRevisao?"↻ ":"")+esc(nn.titulo.length>40?nn.titulo.slice(0,38)+"…":nn.titulo);
+    const b=el("button",(tipo==="extra"?"extra ":"")+(eRevisao?"rever ":"")+(feito?"feito":""),'<i style="background:'+cor+'"></i>'+rot);
+    b.title=id+" · domínio "+pct(m)+"%"+
+     (eRevisao?" · conteúdo já lido; aqui é revisão":" · conteúdo novo")+
+     (feito?(d.data===hoje()?" · você já fez hoje":" · feito neste dia"):(d.data<hoje()?" · não foi tocado neste dia":""))+
+     (tipo==="extra"?" · escolha sua":" · obrigatório do protocolo");
     b.onclick=()=>vai(CONTMAP[id]?"conteudo":"no",id);
     ns.appendChild(b);
    };
    (d.nos||[]).forEach(id=>marca(id,"obrig"));
    (d.extras||[]).forEach(id=>{if((d.nos||[]).indexOf(id)<0)marca(id,"extra")});
+   if(d.tarefa){
+    const feito=tarefaFeita(d.data,d.tarefa);
+    const bt=el("button","tarefa"+(feito?" feito":""),
+      '<i style="background:var(--acao)"></i>'+(feito?"✓ ":"")+ic("simulado",12)+" "+esc(d.tarefa.rotulo));
+    bt.title=d.tarefa.nota;
+    bt.onclick=e=>{e.stopPropagation();
+     if(d.data>hoje()){toast("Ainda não é o dia","Este simulado está marcado para "+d.data.split("-").reverse().slice(0,2).join("/")+".","");return}
+     rodaTarefa(d.tarefa);};
+    ns.appendChild(bt);
+   }
    if(d.folga||!(d.nos||[]).length)ns.appendChild(el("span","pill","dia de folga na sua rotina"));
-   if(d.fase==="revisao")ns.appendChild(el("span","pill warn","revisão"));
+   if(d.fase==="revisao")ns.appendChild(el("span","pill warn",d.revisaoForcada?"revisão — o conteúdo novo acabou":"revisão"));
    if((d.extras||[]).length)ns.appendChild(el("span","pill","+ extras seus"));
    if(d.minutos)ns.appendChild(el("span","pill",hhmm(d.minutos)+" disponíveis"));
    row.appendChild(ns);
@@ -2247,7 +2416,7 @@ VIEWS.plano=function(v){
  cp.appendChild(el("h3",null,"Protocolo das duas últimas semanas"));
  cp.appendChild(el("div",null,'<div class="serif" style="font-size:14.5px;line-height:1.65;color:var(--ink-2)">'+
   'Dos dias '+esc(futuros.filter(d=>d.fase==="revisao")[0]?futuros.filter(d=>d.fase==="revisao")[0].data.split("-").reverse().slice(0,2).join("/"):"—")+' em diante o plano para de introduzir conteúdo novo. '+
-  'Nesse período: três nós por dia em revisão, fila de flashcards em dia, um simulado completo por semana em condição real de 4h30, '+
+  'Nesse período: revisão em vez de conteúdo novo, fila de flashcards e de revisões de conteúdo em dia, o simulado semanal que já está marcado no calendário acima, '+
   'e o caderno de erros revisado do começo ao fim. Conteúdo novo na última semana rende pouco e custa a consolidação do que já foi estudado.'+
   '</div>'));
  v.appendChild(cp);
@@ -3973,27 +4142,70 @@ function trocaFasePomodoro(){
   const longa=c.ciclos%4===0;
   c.fimFase=Date.now()+((longa?(S.config.pomoLonga||15):(S.config.pomoPausa||5))*60000);
   c.inicio=Date.now();
-  bipe();
-  toast("Ciclo "+c.ciclos+" concluído",(longa?"Pausa longa":"Pausa")+" — levante, beba água, olhe para longe.","ok");
+  const minPausa=longa?(S.config.pomoLonga||15):(S.config.pomoPausa||5);
+  toque("pausa");
+  avisaSistema("Pausa de "+minPausa+" min","Ciclo "+c.ciclos+" concluído. Levante, beba água, olhe para longe.");
+  toast("Ciclo "+c.ciclos+" concluído",(longa?"Pausa longa":"Pausa")+" de "+minPausa+" min — levante, beba água, olhe para longe.","ok");
  }else{
   c.fase="foco";
   c.fimFase=Date.now()+((S.config.pomoFoco||25)*60000);
   c.inicio=Date.now();
-  bipe();
+  toque("fim");
+  avisaSistema("Fim da pausa","De volta ao foco — ciclo "+(c.ciclos+1)+".");
   toast("De volta ao foco","Ciclo "+(c.ciclos+1)+".","");
  }
  salva();
 }
-function bipe(){
+/* =========================================================
+   ALERTA DO POMODORO
+   Três reforços, porque um só falha: som, vibração e notificação do
+   sistema. O contexto de áudio é criado no clique dela em "Começar" —
+   navegador não deixa tocar som sem gesto do usuário, e criar o contexto
+   só na hora da troca de fase é justamente quando não há gesto nenhum.
+   ========================================================= */
+let AUDIOCTX=null;
+function preparaSom(){
  try{
-  const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
-  const ctx=new A();const o=ctx.createOscillator(),g=ctx.createGain();
-  o.connect(g);g.connect(ctx.destination);o.type="sine";o.frequency.value=660;
-  g.gain.setValueAtTime(0.0001,ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.16,ctx.currentTime+0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.55);
-  o.start();o.stop(ctx.currentTime+0.6);
-  setTimeout(()=>{try{ctx.close()}catch(e){}},900);
+  const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;
+  if(!AUDIOCTX)AUDIOCTX=new A();
+  if(AUDIOCTX.state==="suspended")AUDIOCTX.resume();
+  return AUDIOCTX;
+ }catch(e){return null}
+}
+function nota(ctx,hz,inicio,dur,vol){
+ const o=ctx.createOscillator(),g=ctx.createGain();
+ o.type="sine";o.frequency.value=hz;
+ o.connect(g);g.connect(ctx.destination);
+ const t=ctx.currentTime+inicio;
+ g.gain.setValueAtTime(0.0001,t);
+ g.gain.exponentialRampToValueAtTime(vol||0.22,t+0.015);
+ g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+ o.start(t);o.stop(t+dur+0.05);
+}
+// Padrões diferentes para não precisar olhar a tela e saber o que mudou:
+// descendo = hora de parar; subindo = hora de voltar.
+function toque(tipo){
+ if(S.config.somPomodoro===false)return;
+ const ctx=preparaSom();
+ if(ctx){
+  if(tipo==="pausa"){nota(ctx,784,0,.28);nota(ctx,587,.22,.34);nota(ctx,440,.46,.5);}
+  else if(tipo==="fim"){nota(ctx,523,0,.24);nota(ctx,659,.18,.24);nota(ctx,880,.36,.46);}
+  else {nota(ctx,660,0,.5);}
+ }
+ try{ if(navigator.vibrate) navigator.vibrate(tipo==="pausa"?[220,90,220]:[120,70,120,70,220]); }catch(e){}
+}
+function avisaSistema(titulo,corpo){
+ try{
+  if(!("Notification" in window))return;
+  if(Notification.permission!=="granted")return;
+  const n=new Notification(titulo,{body:corpo,tag:"petropsi-pomodoro",renotify:true});
+  setTimeout(()=>{try{n.close()}catch(e){}},12000);
+ }catch(e){}
+}
+function pedePermissaoAviso(){
+ try{
+  if(!("Notification" in window))return;
+  if(Notification.permission==="default")Notification.requestPermission().catch(()=>{});
  }catch(e){}
 }
 function abreCrono(noSugerido){
@@ -4032,7 +4244,9 @@ function abreCrono(noSugerido){
  pinta();
  $("#crX").onclick=fechaModal;
  $("#crOk").onclick=()=>{
-  iniciaCrono($("#crNo").value,tipoSel,$("#crPomo").checked);
+  const comPomo=$("#crPomo").checked;
+  if(comPomo){preparaSom();toque("teste");pedePermissaoAviso();}   // gesto dela: é aqui que o som pode nascer
+  iniciaCrono($("#crNo").value,tipoSel,comPomo);
   fechaModal();
  };
 }
@@ -4299,8 +4513,23 @@ VIEWS.rotina=function(v){
   w.appendChild(i);gp.appendChild(w);
  });
  cm.appendChild(gp);
- const bc=el("button","btn");bc.style.marginTop="13px";bc.textContent="Ligar o cronômetro agora";
- bc.onclick=()=>abreCrono();cm.appendChild(bc);
+ const lsom=el("label");lsom.style.cssText="display:flex;gap:9px;align-items:center;font-size:13.5px;margin-top:13px;cursor:pointer";
+ const csom=el("input");csom.type="checkbox";csom.checked=S.config.somPomodoro!==false;
+ csom.onchange=()=>{S.config.somPomodoro=csom.checked;salva();if(csom.checked){preparaSom();toque("teste")}};
+ lsom.appendChild(csom);
+ lsom.appendChild(el("span",null,"Tocar um som na troca de fase — um padrão descendo ao entrar na pausa, subindo ao voltar ao foco. No celular vibra junto."));
+ cm.appendChild(lsom);
+ const bsom=el("button","btn sec sm","Ouvir o toque");bsom.style.marginTop="9px";
+ bsom.onclick=()=>{preparaSom();toque("pausa");setTimeout(()=>toque("fim"),1400)};
+ const bav=el("button","btn sec sm","Permitir aviso do sistema");bav.style.cssText="margin-top:9px;margin-left:7px";
+ bav.onclick=()=>{pedePermissaoAviso();setTimeout(()=>{
+  const p=("Notification" in window)?Notification.permission:"indisponível";
+  toast("Aviso do sistema",p==="granted"?"Permitido — você será avisada mesmo com a aba em segundo plano.":p==="denied"?"Bloqueado no navegador. Libere nas permissões do site.":"Não disponível neste navegador.", p==="granted"?"ok":"");},600)};
+ const bc=el("button","btn");bc.style.cssText="margin-top:13px;display:block";bc.textContent="Ligar o cronômetro agora";
+ bc.onclick=()=>abreCrono();
+ const linha=el("div");linha.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center";
+ linha.appendChild(bsom);linha.appendChild(bav);
+ cm.appendChild(linha);cm.appendChild(bc);
  v.appendChild(cm);
 
  /* ---- dificuldade autoavaliada ---- */
@@ -4402,11 +4631,15 @@ function montaICS(opts){
   const P=geraPlano(false);
   (P.dias||[]).filter(d=>d.data>=hoje()).forEach(d=>{
    const alvo=(d.nos||[]).concat((d.extras||[]).filter(x=>(d.nos||[]).indexOf(x)<0));
-   if(!alvo.length)return;
+   if(!alvo.length){
+    if(d.tarefa)ev("sim-"+d.data,d.data,"PETROPSI · "+d.tarefa.rotulo,d.tarefa.nota,true);
+    return;
+   }
    const titulos=alvo.map(id=>(NOMAP[id]||{}).titulo||id);
    ev("plano-"+d.data,d.data,
       "PETROPSI · "+(d.fase==="revisao"?"revisão":"estudo")+": "+titulos[0]+(titulos.length>1?" (+"+(titulos.length-1)+")":""),
       "Protocolo do dia:\n"+titulos.map((t,i)=>(i+1)+". "+t).join("\n")+
+      (d.tarefa?("\n\n▶ "+d.tarefa.rotulo+"\n"+d.tarefa.nota):"")+
       (d.minutos?("\n\nTempo previsto na sua rotina: "+hhmm(d.minutos)):"")+
       "\n\nAbra o PETROPSI para estudar.",
       true);
@@ -5138,6 +5371,9 @@ const TELAS=[
    ["De hoje em diante","Uma linha por dia. Os assuntos marcados como obrigatórios vêm do protocolo; os de borda tracejada são os que você acrescentou."],
    ["Refazer de hoje em diante","Reordena só o futuro, pela sua prioridade atual. Passado e dias travados ficam como estão."],
    ["Refazer só este dia","Troca os assuntos de um único dia sem mexer em nenhum outro."],
+   ["Por que um assunto não se repete","Conteúdo que você leu do começo ao fim sai do calendário de conteúdo novo — quem cuida dele passa a ser a fila de Revisões. E dois dias com o mesmo assunto guardam pelo menos 14 dias de distância."],
+   ["O simulado semanal","Aparece marcado no dia da semana em que você tem mais tempo, a partir da segunda semana. Se nenhum dia seu comporta as 4h30 do simulado completo, o sistema marca o simulado por bloco e diz por quê."],
+   ["✓ verde","Quer dizer feito naquele dia. Num dia de revisão, ter lido o conteúdo em setembro não marca o dia de novembro como feito — a revisão ainda está por fazer."],
    ["Acrescentar assuntos a hoje","Põe matérias extras no dia. O protocolo obrigatório continua valendo — extras somam, nunca substituem."],
    ["Voltar ao plano anterior","Aparece por dois dias depois de qualquer troca de plano. Restaura o calendário que estava valendo antes."]]},
  {id:"conteudo",tom:"etica",nm:"Conteúdo",ic:"conteudo",oq:"O material de estudo escrito a partir do texto oficial.",
@@ -5163,7 +5399,7 @@ const TELAS=[
   itens:[
    ["Minutos por dia da semana","Declare o tempo real, não o desejado. A meta diária e o plano passam a caber nele: um domingo de zero minuto deixa de cobrar meta e não recebe nó; um sábado de cinco horas recebe mais."],
    ["O que essa rotina alcança","A conta de quantas horas sobram até 29/11 e se elas cobrem o que falta. Enquanto não houver cronômetro suficiente, uso 4 minutos por bloco ou questão como estimativa — depois o número passa a ser o seu ritmo medido."],
-   ["Pomodoro","Foco, pausa curta e pausa longa, configuráveis. O cronômetro toca um bipe e troca de fase sozinho."],
+   ["Pomodoro","Foco, pausa curta e pausa longa, configuráveis. Na troca de fase o cronômetro toca — descendo ao entrar na pausa, subindo ao voltar ao foco —, vibra no celular e manda aviso do sistema, para você não precisar olhar a tela. Se o som não sair, use “Ouvir o toque” aqui: navegador só toca áudio depois de um clique seu. Dá para desligar."],
    ["Como cada assunto parece para você","A escala de fácil a “não entendi”, por nó, virando mapa de calor. Entra na prioridade como segundo sinal e acusa descalibração: nó que você marcou como fácil e erra muito é excesso de confiança — exatamente o que o distrator de literalidade pune."]]},
  {id:"cartoes",tom:"saude",nm:"Flashcards",ic:"cartao",oq:"Repetição espaçada. É aqui que a memória de longo prazo se forma.",
   itens:[
@@ -5460,7 +5696,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
  v.appendChild(c4);
 };
 
@@ -5763,6 +5999,7 @@ $("#btnTema").onclick=()=>{
  try{pontoDoDia()}catch(e){}
  try{reconciliaCrono();pintaCrono()}catch(e){}                 // ponto de restauração do dia, antes de qualquer mudança
  try{migracaoPlano()}catch(e){relatarErro(e,"migracao")}
+ try{migracaoPlanoRepeticao()}catch(e){relatarErro(e,"migracao")}
  roteia();
  try{window.__prontoEm=Math.round(performance.now())}catch(e){}
  window.addEventListener("beforeunload",()=>{try{localStorage.setItem(CHAVE,JSON.stringify(S))}catch(e){}});
