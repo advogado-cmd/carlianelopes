@@ -1207,6 +1207,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     });
   }
   function baixarMsg(t){ $("baixarMsg").textContent = t; }
+  var avisoFalhas = "", duracaoFinal = 0;
 
   function montarMeditacao(){
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -1218,25 +1219,56 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     $("btnBaixar").disabled = true;
     baixarMsg("Reunindo suas gravações…");
 
-    var decodificador = new AC();
-    var v = voiceMeta(), tarefas = [];
+    /* Um único contexto de áudio, reaproveitado.
+       Criar um novo a cada geração vazava contextos e o navegador, a partir
+       de meia dúzia deles, passa a recusar a decodificação — foi assim que
+       uma segunda geração saiu sem nenhuma voz dentro. */
+    try{
+      if(!ctxAudio) ctxAudio = new AC();
+      if(ctxAudio.state === "suspended") ctxAudio.resume();
+    }catch(e){}
+    var decodificador = ctxAudio;
+
+    var v = voiceMeta(), tarefas = [], esperadas = 0;
     for(let i=0;i<5;i++){
       let m = v[i];
       if(!m || !m.path){ tarefas.push(Promise.resolve(null)); continue; }
+      esperadas++;
       tarefas.push(
         sb.storage.from("vozes").download(m.path)
-          .then(function(r){ return (r.error || !r.data) ? null : r.data.arrayBuffer(); })
+          .then(function(r){
+            if(r.error || !r.data) throw new Error("download");
+            return r.data.arrayBuffer();
+          })
           .then(function(ab){
-            if(!ab) return null;
-            return new Promise(function(ok){
-              decodificador.decodeAudioData(ab, function(buf){ ok(buf); }, function(){ ok(null); });
+            return new Promise(function(ok, falhou){
+              var pr;
+              try{ pr = decodificador.decodeAudioData(ab, function(b){ ok(b); }, function(){ falhou(new Error("decodificar")); }); }
+              catch(e){ falhou(new Error("decodificar")); return; }
+              /* Safari devolve promessa; Chrome usa os callbacks acima */
+              if(pr && pr.then) pr.then(ok, function(){ falhou(new Error("decodificar")); });
             });
           })
-          .catch(function(){ return null; })
+          .catch(function(e){ return {falha: i + 1, motivo: e.message}; })
       );
     }
 
-    Promise.all(tarefas).then(function(buffers){
+    Promise.all(tarefas).then(function(brutos){
+      /* falhar em silêncio produzia um arquivo só com sinos, do tamanho
+         nominal — parecia pronto e não era */
+      var falhas = brutos.filter(function(b){ return b && b.falha; });
+      var buffers = brutos.map(function(b){ return (b && b.falha) ? null : b; });
+      if(esperadas > 0 && falhas.length === esperadas){
+        $("btnBaixar").disabled = false;
+        baixarMsg("Não conseguimos abrir nenhuma das suas gravações agora. Recarregue a página e tente de novo.");
+        throw new Error("sem vozes");
+      }
+      if(falhas.length){
+        avisoFalhas = "Atenção: a gravação do minuto " +
+          falhas.map(function(f){ return f.falha; }).join(", ") + " não pôde ser lida e ficou de fora. ";
+      }
+      return buffers;
+    }).then(function(buffers){
       baixarMsg("Montando os cinco minutos…");
       /* cada minuto começa no seu segundo, ou quando a fala anterior acabar —
          o arquivo cresce se as gravações forem mais longas que um minuto */
@@ -1248,6 +1280,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
         fim = t + Math.max(60, d);
       }
       var duracao = Math.max(TOTAL_SEG, Math.ceil(fim + 5));
+      duracaoFinal = duracao;
       var ctx = new OAC(1, duracao * TAXA, TAXA);
       for(var i=0;i<5;i++){
         sinoOffline(ctx, inicios[i], false);
@@ -1286,7 +1319,8 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
         entregarAudio(new Blob(partes, {type:"audio/mpeg"}));
       }
       setTimeout(passo, 0);
-    }).catch(function(){
+    }).catch(function(e){
+      if(e && e.message === "sem vozes") return;   /* a mensagem já foi dada */
       $("btnBaixar").disabled = false;
       baixarMsg("Não conseguimos montar o arquivo desta vez. Tente de novo.");
     });
@@ -1302,7 +1336,9 @@ var SUPABASE_ANON_KEY = "sb_publishable_wnfrEyJ4HjYAFR1PIWPffA_TNV30UW2";
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     $("btnBaixar").disabled = false;
-    baixarMsg("Pronto — o arquivo foi baixado. Guarde no celular e pratique offline.");
+    baixarMsg(avisoFalhas + "Pronto — o arquivo tem " + fmt(duracaoFinal) +
+      " e foi baixado. Guarde no celular e pratique offline.");
+    avisoFalhas = "";
   }
   $("btnBaixar").addEventListener("click", montarMeditacao);
 
