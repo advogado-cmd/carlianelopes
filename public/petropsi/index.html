@@ -862,7 +862,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="2.4.0", PROVA=new Date(2026,10,29);
+const VERSAO="2.4.1", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq, ANUL=(CORPUS.anuladas||[]);
@@ -1632,6 +1632,41 @@ function protocoloDoDia(iso,diasNovo,d0){
  return {fase:revisao?"revisao":"novo",porDia:porDia,minutos:min};
 }
 // Nós que ela começou e ainda não terminou. Nunca somem do dia de hoje.
+// Nós que ela efetivamente tocou num dia, segundo o diário. Um dia do plano
+// jamais pode perder esses — foi o que aconteceu quando o filtro de conteúdo
+// concluído entrou: ela estudou o Código de Ética, o nó ficou concluído, a
+// remontagem tirou-o do dia e o trabalho do dia sumiu DA VISTA (o registro
+// continuou intacto, mas ela não tinha como saber disso).
+// Grava no próprio dia do plano, na hora em que o trabalho acontece.
+// A rede em nosDeHoje conserta a EXIBIÇÃO; esta conserta o REGISTRO, para o
+// dia sobreviver a qualquer remontagem futura sem depender de nenhuma tela.
+// Dado que chega por importação, por recuperação ou por qualquer caminho que
+// não passe pelo registro normal também precisa aparecer no dia. Roda no boot
+// e depois de toda operação que mexe no estado em bloco.
+function reconciliaDiaDoPlano(){
+ try{ nosTocadosEm(hoje()).forEach(registraNoPlano); }catch(e){}
+}
+function registraNoPlano(noId){
+ if(!noId||!NOMAP[noId])return;
+ try{
+  const P=S.plano;
+  if(!P||!P.dias)return;
+  const d=P.dias.find(x=>x.data===hoje());
+  if(!d)return;
+  let mudou=false;
+  if((d.nos||[]).indexOf(noId)<0&&(d.extras||[]).indexOf(noId)<0){
+   d.extras=d.extras||[];d.extras.push(noId);mudou=true;
+  }
+  d.cumpridos=d.cumpridos||[];
+  if(d.cumpridos.indexOf(noId)<0){d.cumpridos.push(noId);mudou=true}
+  if(mudou)salva();
+ }catch(e){}
+}
+function nosTocadosEm(data){
+ const D=diarioCompleto()[data];
+ if(!D)return [];
+ return Object.keys(D.nos||{}).filter(id=>NOMAP[id]&&(D.nos[id]||0)>0);
+}
 function nosEmAndamento(){
  const out=[];
  const add=id=>{if(id&&NOMAP[id]&&out.indexOf(id)<0)out.push(id)};
@@ -1710,7 +1745,7 @@ function novoDia(iso,ordem,cursor,diasNovo,presos,usados){
  const pr=protocoloDoDia(iso,diasNovo);
  const ns=[];
  if(pr.porDia<=0&&!(presos&&presos.length))return {data:iso,nos:[],fase:pr.fase,extras:[],cumpridos:[],folga:true};
- if(presos&&presos.length)presos.forEach(id=>{if(ns.indexOf(id)<0)ns.push(id)});
+ if(presos&&presos.length)presos.forEach(id=>{if(ns.indexOf(id)<0&&NOMAP[id])ns.push(id)});
  const diaN=diasEntre(hoje(),iso);
  const longe=id=>{
   if(!usados)return true;
@@ -1774,7 +1809,9 @@ function remontaFuturo(p,opt){
  const diasNovo=Math.max(1,diasRestantes-RESERVA_REVISAO);
  const ordem=NOS.map(n=>({id:n.id,p:prioridade(n.id)})).sort((a,b)=>b.p-a.p).map(x=>x.id);
  const cursor={i:0};
- const presos=nosEmAndamento().slice(0,2);
+ // o que ela tocou hoje entra fixo no dia de hoje, antes de qualquer prioridade
+ const tocadosHoje=nosTocadosEm(hoje());
+ const presos=[...new Set(tocadosHoje.concat(nosEmAndamento()))].slice(0,4);
  const usados={};   // nó -> índice do dia em que foi usado pela última vez
  // 1) tudo que é passado sobrevive exatamente como está
  const dias=[];
@@ -1798,7 +1835,15 @@ function remontaFuturo(p,opt){
   if(velho){ // o que ela já fez e escolheu naquele dia é cumulativo
    novo.extras=(velho.extras||[]).slice();
    novo.cumpridos=(velho.cumpridos||[]).slice();
+   // nenhum nó com trabalho registrado naquele dia pode desaparecer dele
+   (velho.nos||[]).forEach(id=>{
+    if(novo.nos.indexOf(id)<0&&nosTocadosEm(iso).indexOf(id)>=0)novo.nos.unshift(id);
+   });
   }
+  nosTocadosEm(iso).forEach(id=>{
+   if(NOMAP[id]&&novo.nos.indexOf(id)<0&&(novo.extras||[]).indexOf(id)<0)novo.nos.unshift(id);
+   if((novo.cumpridos||[]).indexOf(id)<0)(novo.cumpridos=novo.cumpridos||[]).push(id);
+  });
   dias.push(novo);
  }
  S.plano={geradoEm:hoje(),inicio:(p&&p.inicio)||(dias[0]?dias[0].data:hoje()),dias:dias};
@@ -1839,7 +1884,14 @@ function refazDia(data){
  const naoConcluidos=ordem.filter(x=>!conteudoConcluido(x));
  const ordem2=naoConcluidos.concat(ordem.filter(x=>conteudoConcluido(x)));
  const novo=novoDia(data,ordem2,{i:0},diasNovo,data===hoje()?nosEmAndamento().slice(0,2):null,usados);
- if(i>=0){novo.extras=(P.dias[i].extras||[]).slice();novo.cumpridos=(P.dias[i].cumpridos||[]).slice();P.dias[i]=novo}
+ if(i>=0){novo.extras=(P.dias[i].extras||[]).slice();novo.cumpridos=(P.dias[i].cumpridos||[]).slice();}
+ // refazer um dia não pode apagar o trabalho registrado nele
+ nosTocadosEm(data).forEach(id=>{
+  if(!NOMAP[id])return;
+  if(novo.nos.indexOf(id)<0&&(novo.extras||[]).indexOf(id)<0)novo.nos.unshift(id);
+  if((novo.cumpridos||[]).indexOf(id)<0)(novo.cumpridos=novo.cumpridos||[]).push(id);
+ });
+ if(i>=0)P.dias[i]=novo;
  else{P.dias.push(novo);P.dias.sort((a,b)=>a.data<b.data?-1:1)}
  S.plano=P;salva();
  return true;
@@ -1868,7 +1920,12 @@ function nosDeHoje(){
   const d=(P.dias||[]).find(x=>x.data===hoje());
   if(d&&d.nos&&d.nos.length){
    const base=d.nos.filter(id=>NOMAP[id]);
-   const extras=(d.extras||[]).filter(id=>NOMAP[id]&&base.indexOf(id)<0);
+   // Rede final, no ponto que a tela realmente lê: o que ela tocou hoje
+   // aparece no dia de hoje, aconteça o que acontecer com o plano. O que era
+   // do protocolo continua no protocolo; o resto entra como estudo dela.
+   const tocados=nosTocadosEm(hoje()).filter(id=>base.indexOf(id)<0);
+   if(d.fixado)return {nos:base,extras:tocados,fase:d.fase,doPlano:true,presos:[],fixado:true};
+   const extras=[...new Set((d.extras||[]).filter(id=>NOMAP[id]&&base.indexOf(id)<0).concat(tocados))];
    const presos=nosEmAndamento().slice(0,2).filter(id=>base.indexOf(id)<0&&extras.indexOf(id)<0);
    return {nos:base.concat(presos),extras:extras,fase:d.fase,doPlano:true,presos:presos};
   }
@@ -1949,21 +2006,105 @@ function gravaSnaps(arr){
  }
  return false;
 }
+function resumoPonto(e){
+ e=e||{};
+ let blocos=0;Object.values(e.conteudoLido||{}).forEach(c=>blocos+=((c||{}).blocos||[]).length);
+ let tent=0;Object.values(e.questoes||{}).forEach(q=>tent+=((q||{}).tentativas||[]).length);
+ let min=0;(e.tempo||[]).forEach(t=>min+=t.minutos||0);
+ return {blocos,tent,cartoes:Object.keys(e.flashcards||{}).length,
+  notas:Object.keys(e.notas||{}).length,simulados:(e.simulados||[]).length,minutos:min,
+  peso:blocos*2+tent*3+Object.keys(e.flashcards||{}).length*2+Object.keys(e.notas||{}).length*5+(e.simulados||[]).length*4};
+}
+// Uma cópia por dia não basta: ela é feita ANTES das mudanças do dia, então
+// restaurar "hoje" descarta justamente o que foi feito hoje. Agora o sistema
+// também guarda cópias ao longo do dia, sempre que o progresso cresce.
 function pontoDoDia(rotulo){
  const snaps=leSnaps();
  const hj=hoje();
- if(!rotulo&&snaps.some(x=>x.data===hj&&x.auto))return;
- snaps.push({data:hj,em:new Date().toISOString(),auto:!rotulo,rotulo:rotulo||"cópia automática do dia",estado:enxuto(S)});
- while(snaps.length>20)snaps.shift();
+ const agora=resumoPonto(S);
+ if(!rotulo){
+  const doDia=snaps.filter(x=>x.data===hj);
+  if(!doDia.length){
+   snaps.push({data:hj,em:new Date().toISOString(),auto:true,rotulo:"início do dia",estado:enxuto(S),resumo:agora});
+   while(snaps.length>24)snaps.shift();
+   gravaSnaps(snaps);
+   return;
+  }
+  // durante o dia: só grava se houve progresso real e passou tempo suficiente
+  const ult=doDia[doDia.length-1];
+  const pesoUlt=(ult.resumo&&ult.resumo.peso)||resumoPonto(ult.estado).peso;
+  const horas=(Date.now()-new Date(ult.em).getTime())/36e5;
+  if(agora.peso>pesoUlt+8&&horas>=1.5){
+   snaps.push({data:hj,em:new Date().toISOString(),auto:true,rotulo:"progresso do dia",estado:enxuto(S),resumo:agora});
+   while(snaps.length>24)snaps.shift();
+   gravaSnaps(snaps);
+  }
+  return;
+ }
+ snaps.push({data:hj,em:new Date().toISOString(),auto:false,rotulo:rotulo,estado:enxuto(S),resumo:agora});
+ while(snaps.length>24)snaps.shift();
  gravaSnaps(snaps);
 }
+// Substitui o estado pelo da cópia. É o modo destrutivo — usado só quando
+// ela escolhe explicitamente, depois de ver o que perde.
 function restauraPonto(i){
  const snaps=leSnaps();
- const p=snaps[i];
- if(!p||!p.estado)return false;
- pontoDoDia("antes de restaurar "+p.data.split("-").reverse().join("/"));
- S=migra(Object.assign({},S,p.estado));
- if(!gravar(CHAVE,S)){toast("Não consegui gravar","A restauração ficou só nesta aba. Exporte seus dados.","");}
+ const pt=snaps[i];
+ if(!pt||!pt.estado)return false;
+ pontoDoDia("antes de restaurar "+pt.data.split("-").reverse().join("/"));
+ S=migra(Object.assign({},S,pt.estado));
+ reconciliaDiaDoPlano();
+ if(!gravar(CHAVE,S))toast("Não consegui gravar","A restauração ficou só nesta aba. Exporte seus dados.","");
+ gravar(CHAVE_BACKUP,S);
+ return true;
+}
+// Soma a cópia ao estado atual, sem apagar nada. É o modo seguro, e é o
+// padrão: recupera o que sumiu sem custar o que veio depois.
+function somaPonto(i){
+ const snaps=leSnaps();
+ const pt=snaps[i];
+ if(!pt||!pt.estado)return false;
+ const e=pt.estado;
+ pontoDoDia("antes de somar "+pt.data.split("-").reverse().join("/"));
+ // mapas: a união vence, e para conteúdo lido a união é por bloco
+ Object.keys(e.conteudoLido||{}).forEach(id=>{
+  const a=S.conteudoLido[id]||{blocos:[],dias:{}},bq=e.conteudoLido[id]||{};
+  const blocos=[...new Set((a.blocos||[]).concat(bq.blocos||[]))].sort((x,y)=>x-y);
+  const dias=Object.assign({},bq.dias||{},a.dias||{});
+  const em=[a.em,bq.em].filter(Boolean).sort().pop()||"";
+  S.conteudoLido[id]={blocos,dias,em};
+ });
+ Object.keys(e.questoes||{}).forEach(id=>{
+  const a=S.questoes[id],bq=e.questoes[id];
+  if(!a){S.questoes[id]=bq;return}
+  const vistas=new Set((a.tentativas||[]).map(t=>t.data+"|"+t.resposta+"|"+t.correta));
+  (bq.tentativas||[]).forEach(t=>{const k=t.data+"|"+t.resposta+"|"+t.correta;if(!vistas.has(k)){a.tentativas.push(t);vistas.add(k)}});
+  a.tentativas.sort((x,y)=>x.data<y.data?-1:1);
+  a.marcada=a.marcada||bq.marcada;
+ });
+ ["flashcards","notas","pptVisto","audioOuvido","revisoesConteudo","dificuldade","mastery"].forEach(k=>{
+  S[k]=Object.assign({},e[k]||{},S[k]||{});
+ });
+ // listas: une sem duplicar
+ const chaveTempo=t=>t.data+"|"+t.no+"|"+t.tipo;
+ const vistosT=new Set((S.tempo||[]).map(chaveTempo));
+ (e.tempo||[]).forEach(t=>{if(!vistosT.has(chaveTempo(t))){S.tempo.push(t);vistosT.add(chaveTempo(t))}});
+ const vistosS=new Set((S.simulados||[]).map(x=>x.data+"|"+x.titulo+"|"+x.acertos));
+ (e.simulados||[]).forEach(x=>{const k=x.data+"|"+x.titulo+"|"+x.acertos;if(!vistosS.has(k)){S.simulados.push(x);vistosS.add(k)}});
+ const vistosE=new Set((S.cadernoErros||[]).map(x=>x.questaoId));
+ (e.cadernoErros||[]).forEach(x=>{if(!vistosE.has(x.questaoId)){S.cadernoErros.push(x);vistosE.add(x.questaoId)}});
+ const vistosD=new Set((S.discursivas||[]).map(x=>x.id));
+ (e.discursivas||[]).forEach(x=>{if(!vistosD.has(x.id)){S.discursivas.push(x);vistosD.add(x.id)}});
+ (e.sessoes||[]).forEach(x=>{
+  const a=(S.sessoes||[]).find(y=>y.data===x.data);
+  if(a)a.minutos=Math.max(a.minutos||0,x.minutos||0);else S.sessoes.push(x);
+ });
+ S.game=S.game||{};
+ S.game.xp=Math.max((S.game.xp||0),((e.game||{}).xp||0));
+ S.game.conquistas=Object.assign({},(e.game||{}).conquistas||{},S.game.conquistas||{});
+ S.game.melhorStreak=Math.max(S.game.melhorStreak||0,(e.game||{}).melhorStreak||0);
+ recalcTudo();reconciliaDiaDoPlano();
+ if(!gravar(CHAVE,S))toast("Não consegui gravar","A recuperação ficou só nesta aba. Exporte seus dados.","");
  gravar(CHAVE_BACKUP,S);
  return true;
 }
@@ -2574,7 +2715,7 @@ function rolaAteBloco(i){
 function marcaBloco(no,i,total){
  const cl=S.conteudoLido[no]||{blocos:[]};
  if(cl.blocos.indexOf(i)<0){cl.blocos.push(i);cl.em=hoje();cl.dias=cl.dias||{};cl.dias[hoje()]=(cl.dias[hoje()]||0)+1;S.conteudoLido[no]=cl;
-  agendaBloco(no,i);
+  agendaBloco(no,i);registraNoPlano(no);
   ganhaXp(XP.bloco);registraAtividade(6);registraTempo(no,"conteudo",6);calcMastery(no);checaConquistas();
   toast("Bloco concluído","+"+XP.bloco+" XP"+(cl.blocos.length>=total?" · módulo completo":""),"xp");}
  salva();
@@ -3086,7 +3227,7 @@ function gravaResposta(q,letra){
  if(!ok&&!S.cadernoErros.some(e=>e.questaoId===q.id&&!e.resolvido))
    S.cadernoErros.push({questaoId:q.id,no:q.no,data:hoje(),causaErro:"",anotacao:"",resolvido:false});
  if(ok){const i=S.cadernoErros.findIndex(e=>e.questaoId===q.id&&!e.resolvido);if(i>=0&&(S.questoes[q.id].tentativas.filter(t=>t.correta).length>=1))S.cadernoErros[i].resolvido=true;}
- registraAtividade(1);calcMastery(q.no);checaConquistas();salva();
+ registraAtividade(1);calcMastery(q.no);registraNoPlano(q.no);checaConquistas();salva();
 }
 function criaCartaoDeErro(q){
  const id="F-USER-"+q.id;
@@ -4050,6 +4191,7 @@ function registraTempo(no,tipo,minutos){
  const d=hoje();
  const ex=S.tempo.find(x=>x.data===d&&x.no===(no||"")&&x.tipo===tipo);
  if(ex)ex.minutos+=minutos; else S.tempo.push({data:d,no:no||"",tipo:tipo,minutos:minutos});
+ if(no)registraNoPlano(no);
  if(S.tempo.length>4000)S.tempo=S.tempo.slice(-3000);
  salva();
 }
@@ -5596,7 +5738,7 @@ VIEWS.config=function(v){
     const vistos=new Set((novo.discursivas||[]).map(x=>x.id));
     (S.discursivas||[]).forEach(x=>{if(!vistos.has(x.id))novo.discursivas.push(x)});
     novo.game.xp=Math.max((S.game||{}).xp||0,(novo.game||{}).xp||0);
-    S=novo;gravar(CHAVE,S);gravar(CHAVE_BACKUP,S);
+    S=novo;reconciliaDiaDoPlano();gravar(CHAVE,S);gravar(CHAVE_BACKUP,S);
     toast("Dados importados","Histórico restaurado e fundido com o que já havia aqui.","ok");roteia();
    }catch(e){toast("Arquivo inválido","Não consegui ler esse JSON.","")}};r.readAsText(f);};
  bi.onclick=()=>fi.click();bb.appendChild(bi);bb.appendChild(fi);
@@ -5651,39 +5793,67 @@ VIEWS.config=function(v){
 
  /* ---- pontos de restauração ---- */
  const cpt=el("div","card");cpt.style.marginBottom="13px";
- cpt.appendChild(el("h3",null,"Voltar o sistema a um dia anterior <span class='hint'>uma cópia por dia, as 20 mais recentes</span>"));
- cpt.appendChild(el("div",null,'<div style="font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:11px">Toda vez que você abre o PETROPSI num dia novo, ele guarda uma cópia do seu progresso <b>antes</b> das mudanças daquele dia. Se algo der errado, escolha a data e o sistema volta exatamente para como estava. Antes de restaurar, o estado atual também vira uma cópia — dá para voltar atrás da volta.</div>'));
- const snaps=leSnaps().slice().reverse();
+ cpt.appendChild(el("h3",null,"Recuperar progresso <span class='hint'>cópias automáticas</span>"));
+ cpt.appendChild(el("div",null,'<div style="font-size:13.5px;color:var(--ink-2);line-height:1.65;margin-bottom:13px">'+
+  'O sistema guarda uma cópia do seu progresso ao abrir num dia novo e outras ao longo do dia, sempre que você avança. '+
+  '<b>Recuperar somando</b> traz de volta o que estiver na cópia sem apagar nada do que veio depois — é o modo seguro, e o que você quase sempre quer. '+
+  '<b>Voltar exatamente</b> substitui o estado atual pelo da cópia, e aí o que veio depois se perde; use só quando quiser desfazer algo de propósito.'+
+  '</div>'));
+ const snaps=leSnaps();
+ const atual=resumoPonto(S);
+ cpt.appendChild(el("div",null,'<div style="font-size:12.5px;color:var(--ink-3);font-family:\'JetBrains Mono\',monospace;margin-bottom:11px">'+
+  'agora: '+atual.blocos+' blocos · '+atual.tent+' respostas · '+atual.notas+' anotações · '+atual.simulados+' simulados</div>'));
  if(!snaps.length)cpt.appendChild(el("div","empty","<b>Nenhuma cópia ainda.</b>A primeira é criada quando você abrir o sistema amanhã."));
  else{
+  const maisRico=snaps.reduce((a,x,i)=>{const r=(x.resumo||resumoPonto(x.estado)).peso;return r>a.p?{i,p:r}:a},{i:-1,p:-1});
   const tl=el("div","scrollx");const tb=el("table","t");
-  tb.innerHTML="<thead><tr><th>Data</th><th>O que é</th><th>Conteúdo</th><th></th></tr></thead>";
+  tb.innerHTML="<thead><tr><th style='width:118px'>Quando</th><th>O que é</th><th style='width:190px'>Conteúdo</th><th style='width:230px'></th></tr></thead>";
   const bd=el("tbody");
-  snaps.forEach((sn,i)=>{
-   const e=sn.estado||{};
-   const nq=Object.keys(e.questoes||{}).length,nc=Object.keys(e.conteudoLido||{}).length,nn=Object.keys(e.notas||{}).length;
+  snaps.slice().reverse().forEach((sn,ri)=>{
+   const i=snaps.length-1-ri;
+   const r=sn.resumo||resumoPonto(sn.estado);
+   const hora=(()=>{try{return new Date(sn.em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}catch(e){return ""}})();
+   const perde=Math.max(0,atual.peso-r.peso);
    const tr=el("tr");
-   tr.innerHTML="<td class='mono'>"+esc(sn.data.split("-").reverse().join("/"))+"</td>"+
-    "<td style='font-size:13px'>"+esc(sn.rotulo||"cópia do dia")+"</td>"+
-    "<td class='mono' style='font-size:11px'>"+nq+" questões · "+nc+" nós lidos · "+nn+" anotações</td><td></td>";
-   const b=el("button","btn sec sm","Restaurar");
-   b.onclick=()=>{
-    modal('<h3 style="margin:0 0 9px;font-size:17px">Voltar para '+esc(sn.data.split("-").reverse().join("/"))+'?</h3>'+
-     '<p style="margin:0 0 15px;color:var(--ink-2);font-size:14px">Seu progresso volta ao que era naquele dia. O estado de agora fica guardado como uma nova cópia, então dá para desfazer.</p>'+
-     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="rOk">Restaurar</button><button class="btn sec" id="rNo">Cancelar</button></div>');
+   tr.innerHTML="<td class='mono' style='font-size:11.5px'>"+esc(sn.data.split("-").reverse().slice(0,2).join("/"))+
+     (hora?" <span style='color:var(--ink-3)'>"+esc(hora)+"</span>":"")+"</td>"+
+    "<td style='font-size:12.5px'>"+esc(sn.rotulo||"cópia do dia")+
+     (i===maisRico.i?" <span class='pill ok'>a mais completa</span>":"")+"</td>"+
+    "<td class='mono' style='font-size:10.5px;color:var(--ink-3);line-height:1.45'>"+r.blocos+" blocos · "+r.tent+" respostas<br>"+r.notas+" anotações · "+r.simulados+" simulados</td><td></td>";
+   const acao=el("div");acao.style.cssText="display:flex;gap:5px;flex-wrap:wrap";
+   const bs=el("button","btn sm","Recuperar somando");
+   bs.onclick=()=>{
+    modal('<h3 style="margin:0 0 6px">Somar a cópia de '+esc(sn.data.split("-").reverse().join("/"))+(hora?" às "+esc(hora):"")+'</h3>'+
+     '<p style="font-size:13.5px;color:var(--ink-2);margin:0 0 15px;line-height:1.6">Tudo o que estiver nessa cópia e não estiver aqui volta. <b>Nada do que você fez depois é apagado.</b> Se a cópia tiver menos coisas que o estado de agora, o estado de agora continua valendo.</p>'+
+     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="sOk">Recuperar somando</button><button class="btn sec" id="sNo">Cancelar</button></div>');
+    $("#sNo").onclick=fechaModal;
+    $("#sOk").onclick=()=>{
+     if(somaPonto(i)){fechaModal();toast("Progresso recuperado","O que estava na cópia voltou. Nada foi apagado.","ok");location.hash="#/painel";roteia()}
+     else{fechaModal();toast("Não consegui recuperar","A cópia estava ilegível.","")}
+    };
+   };
+   const bv=el("button","btn sec sm","Voltar exatamente");
+   bv.onclick=()=>{
+    modal('<h3 style="margin:0 0 6px">Voltar exatamente para '+esc(sn.data.split("-").reverse().join("/"))+(hora?" às "+esc(hora):"")+'?</h3>'+
+     '<p style="font-size:13.5px;color:var(--ink-2);margin:0 0 11px;line-height:1.6">O seu progresso passa a ser o da cópia.</p>'+
+     (perde>0?'<div style="border-left:4px solid var(--crit);background:var(--crit-soft);border-radius:var(--radius-p);padding:11px 13px;margin-bottom:13px;font-size:13px;line-height:1.55;color:var(--ink)">'+
+       '<b>Você vai perder o que veio depois.</b><br>Agora: '+atual.blocos+' blocos, '+atual.tent+' respostas, '+atual.notas+' anotações.<br>Nessa cópia: '+r.blocos+' blocos, '+r.tent+' respostas, '+r.notas+' anotações.'+
+       '<br><br>Se o que você quer é só trazer de volta algo que sumiu, use <b>Recuperar somando</b> — não custa nada.</div>':
+      '<div style="font-size:13px;color:var(--ink-3);margin-bottom:13px">Essa cópia tem tanto ou mais que o estado de agora, então você não perde nada.</div>')+
+     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="rOk" style="border-color:var(--crit);color:var(--crit)!important">Voltar exatamente</button><button class="btn" id="rNo">Cancelar</button></div>');
     $("#rNo").onclick=fechaModal;
     $("#rOk").onclick=()=>{
-     const idx=leSnaps().length-1-i;
-     if(restauraPonto(idx)){fechaModal();toast("Sistema restaurado","Voltei para "+sn.data.split("-").reverse().join("/")+".","ok");location.hash="#/painel";roteia();}
+     if(restauraPonto(i)){fechaModal();toast("Sistema restaurado","Voltei para "+sn.data.split("-").reverse().join("/")+".","ok");location.hash="#/painel";roteia()}
      else{fechaModal();toast("Não consegui restaurar","A cópia estava ilegível.","")}
     };
    };
-   tr.lastChild.appendChild(b);bd.appendChild(tr);
+   acao.appendChild(bs);acao.appendChild(bv);
+   tr.lastChild.appendChild(acao);bd.appendChild(tr);
   });
   tb.appendChild(bd);tl.appendChild(tb);cpt.appendChild(tl);
  }
  const bsn=el("button","btn sec sm","Guardar uma cópia agora");bsn.style.marginTop="11px";
- bsn.onclick=()=>{pontoDoDia("cópia manual");toast("Cópia guardada","Você pode voltar a este ponto depois.","ok");roteia()};
+ bsn.onclick=()=>{pontoDoDia("cópia feita por você");toast("Cópia guardada","Você pode voltar a este ponto depois.","ok");roteia()};
  cpt.appendChild(bsn);
  v.appendChild(cpt);
 
@@ -5696,7 +5866,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Correção urgente (2.4.1):</b> na versão anterior, um assunto que você concluía era retirado do dia — inclusive do <b>dia de hoje</b>. O registro continuava salvo, mas sumia da tela, e não havia como saber disso. Agora <b>nenhum dia perde um assunto em que houve trabalho registrado nele</b>, protegido em três pontos independentes, com um teste automático que trava essa falha. A recuperação também mudou: além de “Voltar exatamente”, existe <b>“Recuperar somando”</b>, que traz de volta o que sumiu <b>sem apagar o que veio depois</b>. A lista de cópias mostra a hora, o que cada uma contém, qual é a mais completa, e avisa quanto você perderia numa substituição. O sistema também passou a guardar cópias ao longo do dia, e não só uma no começo dele.<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
  v.appendChild(c4);
 };
 
@@ -6000,6 +6170,7 @@ $("#btnTema").onclick=()=>{
  try{reconciliaCrono();pintaCrono()}catch(e){}                 // ponto de restauração do dia, antes de qualquer mudança
  try{migracaoPlano()}catch(e){relatarErro(e,"migracao")}
  try{migracaoPlanoRepeticao()}catch(e){relatarErro(e,"migracao")}
+ try{reconciliaDiaDoPlano()}catch(e){}
  roteia();
  try{window.__prontoEm=Math.round(performance.now())}catch(e){}
  window.addEventListener("beforeunload",()=>{try{localStorage.setItem(CHAVE,JSON.stringify(S))}catch(e){}});
