@@ -620,6 +620,12 @@ table.t tr:last-child td{border-bottom:0}
 #crono .tx small{font-size:10.5px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #crono .tx small.fs{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.06em;opacity:.82}
 #crono .btn{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.36);color:#fff!important}
+#crono .btn{white-space:nowrap}
+@media(max-width:620px){
+ #crono{gap:8px;padding:8px 8px 8px 13px}
+ #crono .btn{font-size:11px;padding:5px 8px}
+ #cronoM{max-width:78px;overflow:hidden;text-overflow:ellipsis}
+}
 @media(max-width:960px){#crono{bottom:74px}}
 /* mapa de calor da dificuldade */
 .hmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:4px}
@@ -847,7 +853,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 <div id="toasts" aria-live="polite"></div>
 <div class="modal" id="modal"><div class="mb" id="modalBody"></div></div>
 <div id="areaImpressao" aria-hidden="true"></div>
-<div id="crono" role="status" aria-live="polite"><span class="pt"></span><div class="tx"><b id="cronoT" class="mono">00:00:00</b><small id="cronoN"></small><small id="cronoF" class="fs"></small></div><button class="btn sec sm" id="cronoP">Parar</button></div>
+<div id="crono" role="status" aria-live="polite"><span class="pt"></span><div class="tx"><b id="cronoT" class="mono">00:00:00</b><small id="cronoN"></small><small id="cronoF" class="fs"></small></div><button class="btn sec sm" id="cronoM">Mudar conteúdo</button><button class="btn sec sm" id="cronoP">Parar</button></div>
 <button id="iabtn" type="button" aria-label="Abrir o assistente" title="Perguntar ao assistente"></button>
 <div id="iapane" role="dialog" aria-label="Assistente">
  <div class="iah"><span class="ii"></span><div><b>Assistente do PETROPSI</b><small>busca no material verificado · cita a fonte · não inventa</small></div><button class="btn sec sm" id="iax">Fechar</button></div>
@@ -862,7 +868,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="2.4.1", PROVA=new Date(2026,10,29);
+const VERSAO="2.4.3", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq, ANUL=(CORPUS.anuladas||[]);
@@ -879,8 +885,17 @@ function textoDe(q){
 
 /* ---------- utilidades ---------- */
 const $=s=>document.querySelector(s), el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
-const hoje=()=>new Date().toISOString().slice(0,10);
-const diasEntre=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+/* A data tem de ser a do RELÓGIO DELA, não a de Greenwich.
+   toISOString() converte para UTC: no Brasil (UTC-3) isso faz o dia virar
+   às 21h — a meta zerava, as missões reiniciavam e o que ela estudasse
+   das 21h à meia-noite era lançado no dia seguinte. */
+const isoLocal=d=>{
+ const x=(d instanceof Date)?d:new Date();
+ return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
+};
+const hoje=()=>isoLocal(new Date());
+const meioDia=t=>new Date(String(t).slice(0,10)+"T12:00:00");
+const diasEntre=(a,b)=>Math.round((meioDia(b)-meioDia(a))/864e5);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pct=v=>Math.round(v*100);
 const num=(v,casas)=>Number(v).toFixed(casas==null?1:casas).replace(".",",");
@@ -1118,7 +1133,7 @@ function agendaCartao(id,q){
   if(q<3){f.repeticoes=0;f.intervalo=1;f.lapsos++;if(f.lapsos>=5)f.leech=true;}
   else{f.repeticoes++;f.intervalo=f.repeticoes===1?1:f.repeticoes===2?6:Math.round(f.intervalo*f.ef);}
   f.revisoes++;f.ultimaRevisao=hoje();
-  const d=new Date();d.setDate(d.getDate()+f.intervalo);f.proximaRevisao=d.toISOString().slice(0,10);
+  const d=new Date();d.setDate(d.getDate()+f.intervalo);f.proximaRevisao=isoLocal(d);
   S.flashcards[id]=f;return f;
 }
 const cartoesVencidos=no=>FCS.filter(f=>(!no||f.no===no)&&(!S.flashcards[f.id]||S.flashcards[f.id].proximaRevisao<=hoje()));
@@ -1174,7 +1189,7 @@ function prioridade(noId){
   // É um segundo sinal, não o principal: pesa menos que desempenho medido.
   const dif=dificuldade(noId);
   if(dif)p*=(0.86+0.09*dif);
-  const faltam=diasEntre(hoje(),PROVA.toISOString().slice(0,10));
+  const faltam=diasEntre(hoje(),isoLocal(PROVA));
   if(faltam<=30&&m<0.5)p*=2.2;
   if(dias>21)p*=1.3;
   return p;
@@ -1436,7 +1451,7 @@ function roteia(){
 window.addEventListener("hashchange",roteia);
 
 function pintaTopo(){
- const d=diasEntre(hoje(),PROVA.toISOString().slice(0,10));
+ const d=diasEntre(hoje(),isoLocal(PROVA));
  $("#cDias").textContent=d>0?d+(d===1?" dia":" dias"):(d===0?"é hoje":"passou");
  const n=nivelDe(S.game.xp),a=xpDoNivel(n),b=xpDoNivel(n+1);
  const fr=b>a?(S.game.xp-a)/(b-a):0;
@@ -1519,7 +1534,7 @@ const VIEWS={};
 const RESERVA_REVISAO=14; // últimos dias dedicados só a revisar
 
 function metaDiaria(){
- const diasRestantes=Math.max(0,diasEntre(hoje(),PROVA.toISOString().slice(0,10)));
+ const diasRestantes=Math.max(0,diasEntre(hoje(),isoLocal(PROVA)));
  const diasNovo=Math.max(1,diasRestantes-RESERVA_REVISAO);
  // o que falta de conteúdo novo
  let blocosTot=0,blocosLidos=0;
@@ -1561,7 +1576,7 @@ function projecaoTermino(){
  const d=Math.max(dB===Infinity?0:dB,dQ===Infinity?0:dQ);
  if(!d||!isFinite(d))return null;
  const alvo=new Date();alvo.setDate(alvo.getDate()+d);
- return {dias:d,data:alvo.toISOString().slice(0,10),aTempo:d<=m.diasNovo};
+ return {dias:d,data:isoLocal(alvo),aTempo:d<=m.diasNovo};
 }
 /* =========================================================
    DIÁRIO — o que foi feito, dia a dia. Nunca é apagado.
@@ -1620,7 +1635,7 @@ function situacaoNo(noId,data){
    com passado preservado e refazer por dia.
    ========================================================= */
 const RESERVA_REVISAO_=RESERVA_REVISAO;
-function planoFimISO(){return PROVA.toISOString().slice(0,10)}
+function planoFimISO(){return isoLocal(PROVA)}
 function protocoloDoDia(iso,diasNovo,d0){
  const revisao=diasEntre(hoje(),iso)>=diasNovo;
  // quantos nós cabem no dia sai do tempo declarado, não de uma regra fixa.
@@ -1824,23 +1839,23 @@ function remontaFuturo(p,opt){
  // 2) hoje em diante
  for(let k=0;k<diasRestantes;k++){
   const dt=new Date();dt.setDate(dt.getDate()+k);
-  const iso=dt.toISOString().slice(0,10);
-  const velho=antigos[iso];
+  const isoDia=isoLocal(dt);
+  const velho=antigos[isoDia];
   if(velho&&velho.fixado&&!opt.apagaFixados){
    (velho.nos||[]).forEach(id=>{usados[id]=k});
    dias.push(velho);continue;
   }
   if(velho&&velho.data>=hoje()&&!opt.apagaFixados){} // segue adiante
-  const novo=novoDia(iso,ordem,cursor,diasNovo,k===0?presos:null,usados);
+  const novo=novoDia(isoDia,ordem,cursor,diasNovo,k===0?presos:null,usados);
   if(velho){ // o que ela já fez e escolheu naquele dia é cumulativo
    novo.extras=(velho.extras||[]).slice();
    novo.cumpridos=(velho.cumpridos||[]).slice();
    // nenhum nó com trabalho registrado naquele dia pode desaparecer dele
    (velho.nos||[]).forEach(id=>{
-    if(novo.nos.indexOf(id)<0&&nosTocadosEm(iso).indexOf(id)>=0)novo.nos.unshift(id);
+    if(novo.nos.indexOf(id)<0&&nosTocadosEm(isoDia).indexOf(id)>=0)novo.nos.unshift(id);
    });
   }
-  nosTocadosEm(iso).forEach(id=>{
+  nosTocadosEm(isoDia).forEach(id=>{
    if(NOMAP[id]&&novo.nos.indexOf(id)<0&&(novo.extras||[]).indexOf(id)<0)novo.nos.unshift(id);
    if((novo.cumpridos||[]).indexOf(id)<0)(novo.cumpridos=novo.cumpridos||[]).push(id);
   });
@@ -2151,7 +2166,7 @@ function migracaoPlanoRepeticao(){
 /* ---------------- PAINEL ---------------- */
 VIEWS.painel=function(v){
  recalcTudo();checaConquistas();
- const np=notaProjetada(),d=diasEntre(hoje(),PROVA.toISOString().slice(0,10));
+ const np=notaProjetada(),d=diasEntre(hoje(),isoLocal(PROVA));
  const venc=cartoesVencidos().length;
  v.appendChild(el("h1","vt","Painel"));
  v.appendChild(el("p","vs","Faltam "+d+" dias para 29 de novembro de 2026. Abaixo está o que os seus números dizem hoje — sem arredondar para cima."));
@@ -2172,8 +2187,8 @@ VIEWS.painel=function(v){
   '<span class="vd '+(M.cumprida?"ok":"no")+'">'+(M.cumprida?"cumprida":(M.feito?"em andamento":"ainda não começou"))+'</span>';
  cm0.appendChild(hd);
  const cronoBar=el("div");cronoBar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:9px 17px;border-bottom:1px solid var(--line);background:var(--surface-2)";
- const bcr=el("button","btn sm",ic("crono",13)+(cronoAtivo()?"Parar o cronômetro":"Ligar o cronômetro"));
- bcr.onclick=()=>cronoAtivo()?paraCrono():abreCrono();
+ const bcr=el("button","btn sm",ic("crono",13)+(cronoAtivo()?"Mudar ou parar o cronômetro":"Ligar o cronômetro"));
+ bcr.onclick=()=>cronoAtivo()?abreTrocaAssunto():abreCrono();
  cronoBar.appendChild(bcr);
  cronoBar.appendChild(el("span",null,'<span style="font-size:12.5px;color:var(--ink-2)">'+
   (dispoDefinida()?('Hoje você tem <b>'+hhmm(M.minutosHoje)+'</b> na sua rotina'):'Você ainda não declarou a sua rotina — a meta está usando um dia genérico')+
@@ -2372,7 +2387,7 @@ function heatmap(){
   for(let r=0;r<7;r++){
    const d=new Date(ini);d.setDate(d.getDate()+c*7+r);
    if(d>hj){col.appendChild(el("i"));continue}
-   const k=d.toISOString().slice(0,10),m=mapa[k]||0;
+   const k=isoLocal(d),m=mapa[k]||0;
    const cl=m>=90?"h4":m>=45?"h3":m>=20?"h2":m>0?"h1":"";
    const i=el("i",cl);i.title=k+" · "+m+" min";col.appendChild(i);
   }
@@ -2484,7 +2499,7 @@ VIEWS.plano=function(v){
  futuros.forEach(d=>{
   const dt=new Date(d.data+"T12:00:00");
   const ini=new Date(dt);ini.setDate(ini.getDate()-((dt.getDay()+6)%7));
-  const k=ini.toISOString().slice(0,10);
+  const k=isoLocal(ini);
   (semanas[k]=semanas[k]||[]).push(d);
  });
  const chaves=Object.keys(semanas).sort();
@@ -2635,6 +2650,22 @@ VIEWS.conteudo=function(v,id){
  }
  const bm2=el("button","btn sec","Mapa mental");bm2.onclick=()=>vai("mapas",id);bar.appendChild(bm2);
  bar.appendChild(botaoImprimir("Imprimir / PDF — escolher o que",()=>escolheBlocosParaImprimir(c)));
+ /* Ela abriu um módulo enquanto o cronômetro corre em outro. Um clique
+    aponta a contagem para cá, sem encerrar o bloco de foco nem o ciclo. */
+ {const cr=cronoAtivo();
+  if(!cr){
+   const bcr2=el("button","btn sec","Cronometrar este módulo");
+   bcr2.onclick=()=>abreCrono(id);bar.appendChild(bcr2);
+  }else if(cr.no!==id){
+   const bcr2=el("button","btn sec","Contar o tempo aqui");
+   bcr2.title="O cronômetro continua correndo; só o assunto muda.";
+   bcr2.onclick=()=>{trocaAssuntoCrono(id,cr.tipo);vai("conteudo",id)};
+   bar.appendChild(bcr2);
+  }else{
+   const et=el("span","hint","cronômetro contando neste módulo");
+   et.style.cssText="font-size:12px;color:var(--ok-ink,var(--ink-2));align-self:center";
+   bar.appendChild(et);
+  }}
  const lidos=(S.conteudoLido[id]||{}).blocos||[];
  const primeiroNaoLido=c.blocos.findIndex((_,i)=>lidos.indexOf(i)<0);
  if(primeiroNaoLido>0){
@@ -3892,7 +3923,7 @@ function busca(pergunta,limite){
 /* ---- respostas que vêm dos números dela, não do texto ---- */
 function respostaDeEstado(pergunta){
  const t=normaliza(pergunta);
- const d=diasEntre(hoje(),PROVA.toISOString().slice(0,10));
+ const d=diasEntre(hoje(),isoLocal(PROVA));
  if(/(quantos|quanto|faltam|falta).*(dia|tempo)|quando.*(prova|29)/.test(t)){
   return "Faltam **"+d+" dias** para 29 de novembro de 2026. Reservando os últimos "+RESERVA_REVISAO+
    " só para revisão, sobram "+Math.max(0,d-RESERVA_REVISAO)+" dias de conteúdo novo.";
@@ -4130,7 +4161,7 @@ function agendaBloco(no,i){
 }
 function maisDias(iso,n){
  const d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+n);
- return d.toISOString().slice(0,10);
+ return isoLocal(d);
 }
 function revisoesVencidas(no){
  const R=revisoes(),hj=hoje(),out=[];
@@ -4219,27 +4250,81 @@ function totalMinutos(desdeDias){
  return t;
 }
 /* estado do cronômetro; sobrevive a fechar a aba */
-function cronoAtivo(){return S.crono&&S.crono.inicio?S.crono:null}
+function cronoAtivo(){
+ const c=S.crono;
+ if(!c||!c.inicio)return null;
+ // sessão iniciada antes da 2.4.3 não tem as âncoras novas
+ if(!c.aberto)c.aberto=c.inicio;
+ if(!c.desde)c.desde=c.inicio;
+ if(c.resto==null)c.resto=0;
+ if(c.totalSessao==null)c.totalSessao=0;
+ if(!c.trocas)c.trocas=[];
+ return c;
+}
 function iniciaCrono(no,tipo,pomodoro){
  if(cronoAtivo())paraCrono(true);
- S.crono={inicio:Date.now(),no:no||"",tipo:tipo||"conteudo",pomodoro:!!pomodoro,
-          fase:"foco",ciclos:0,fimFase:Date.now()+(S.config.pomoFoco||25)*60000};
+ const agora=Date.now();
+ /* Três âncoras distintas, e a distinção é o coração do conserto:
+    aberto = quando o bloco de foco começou. NUNCA se mexe. É o número grande.
+    inicio = começo da fase atual do Pomodoro (foco ou pausa).
+    desde  = começo do trecho ainda não contabilizado, para o par nó+atividade
+             que está valendo agora. Trocar de assunto move só esta. */
+ S.crono={aberto:agora,inicio:agora,desde:agora,resto:0,totalSessao:0,trocas:[],
+          no:no||"",tipo:tipo||"conteudo",pomodoro:!!pomodoro,
+          fase:"foco",ciclos:0,fimFase:agora+(S.config.pomoFoco||25)*60000};
  salva();pintaCrono();
  toast("Cronômetro ligado",(no?((NOMAP[no]||{}).titulo||no):"sem nó")+" · "+(TIPOS_ESTUDO.find(t=>t[0]===tipo)||["","estudo"])[1],"ok");
 }
+/* Fecha a conta do trecho corrente e reabre a partir de agora.
+   O resto abaixo de um minuto é guardado (c.resto) em vez de descartado —
+   sem isso, trocar de assunto de dois em dois minutos evaporaria o tempo. */
+function creditaSegmento(c){
+ if(!c)return 0;
+ const ms=Math.max(0,Date.now()-(c.desde||c.inicio||Date.now()))+(c.resto||0);
+ const min=Math.floor(ms/60000);
+ c.resto=ms-min*60000;
+ c.desde=Date.now();
+ if(min>=1){registraTempo(c.no,c.tipo,min);registraAtividade(min);c.totalSessao=(c.totalSessao||0)+min}
+ return min;
+}
+/* Troca o assunto SEM encerrar o bloco de foco: o relógio não zera, o ciclo do
+   Pomodoro não reinicia, a pausa continua marcada para a mesma hora. O que
+   muda é apenas a conta — daqui em diante o tempo vai para o novo assunto. */
+function trocaAssuntoCrono(no,tipo){
+ const c=cronoAtivo();if(!c)return false;
+ no=no||"";tipo=tipo||c.tipo;
+ if(no===c.no&&tipo===c.tipo){toast("Nada mudou","O cronômetro já estava neste assunto e nesta atividade.","");return false}
+ const min=creditaSegmento(c);
+ const de=c.no;
+ c.trocas=c.trocas||[];
+ c.trocas.push({em:Date.now(),de:de,deTipo:c.tipo,para:no,paraTipo:tipo,minutos:min});
+ if(c.trocas.length>60)c.trocas=c.trocas.slice(-40);
+ c.no=no;c.tipo=tipo;
+ salva();pintaCrono();
+ const nomeDe=de?((NOMAP[de]||{}).titulo||de):"sem nó";
+ const nomePara=no?((NOMAP[no]||{}).titulo||no):"sem nó";
+ toast("Assunto trocado",(min>=1?(min+" min lançados em "+nomeDe+". "):"")+"O cronômetro segue correndo em "+nomePara+".","ok");
+ return true;
+}
 function paraCrono(silencioso){
  const c=cronoAtivo();if(!c)return 0;
- const min=Math.round((Date.now()-c.inicio)/60000);
- if(min>=1){registraTempo(c.no,c.tipo,min);registraAtividade(min);ganhaXp(Math.min(40,Math.round(min/5)*2));}
+ creditaSegmento(c);
+ const min=c.totalSessao||0;
+ if(min>=1)ganhaXp(Math.min(40,Math.round(min/5)*2));
  S.crono=null;salva();pintaCrono();
- if(!silencioso)toast("Cronômetro parado",min>=1?(min+" minuto(s) registrados"+(c.no?" em "+((NOMAP[c.no]||{}).titulo||c.no):"")):"menos de um minuto — nada foi registrado","ok");
+ if(!silencioso){
+  const nt=(c.trocas||[]).length;
+  toast("Cronômetro parado",
+   min>=1?(min+" minuto(s) registrados"+(nt?(" em "+(nt+1)+" assuntos"):(c.no?" em "+((NOMAP[c.no]||{}).titulo||c.no):"")))
+         :"menos de um minuto — nada foi registrado","ok");
+ }
  return min;
 }
 // reconciliação: se a aba foi fechada, o tempo até o fechamento vale,
 // mas não vale a madrugada inteira — corta em 3 horas.
 function reconciliaCrono(){
  const c=cronoAtivo();if(!c)return;
- const decorrido=(Date.now()-c.inicio)/60000;
+ const decorrido=(Date.now()-(c.desde||c.inicio))/60000;
  if(decorrido>180){
   const min=180;
   registraTempo(c.no,c.tipo,min);registraAtividade(min);
@@ -4255,18 +4340,20 @@ function pintaCrono(){
  box.classList.add("on");
  const upd=()=>{
   const cc=cronoAtivo();if(!cc){pintaCrono();return}
-  const dec=Math.floor((Date.now()-cc.inicio)/1000);
+  // o número grande conta o BLOCO DE FOCO inteiro: não zera na troca de fase
+  // nem na troca de assunto. Zerar é o que faz parecer que recomeçou.
+  const dec=Math.floor((Date.now()-(cc.aberto||cc.inicio))/1000);
   $("#cronoT").textContent=hhmmss(dec);
   const nome=cc.no?((NOMAP[cc.no]||{}).titulo||cc.no):"sem nó definido";
   $("#cronoN").textContent=nome.length>34?nome.slice(0,32)+"…":nome;
   const tipo=(TIPOS_ESTUDO.find(t=>t[0]===cc.tipo)||["","estudo"])[1];
   if(cc.pomodoro){
    const rest=Math.max(0,Math.round((cc.fimFase-Date.now())/1000));
-   $("#cronoF").textContent=(cc.fase==="foco"?"foco":"pausa")+" · "+hhmmss(rest)+" · ciclo "+(cc.ciclos+1);
+   $("#cronoF").textContent=(cc.fase==="foco"?"foco":"pausa")+" · "+hhmmss(rest)+" · ciclo "+(cc.ciclos+1)+((cc.trocas||[]).length?" · "+cc.trocas.length+" troca(s)":"");
    box.classList.toggle("pausa",cc.fase==="pausa");
    if(rest<=0)trocaFasePomodoro();
   }else{
-   $("#cronoF").textContent=tipo;
+   $("#cronoF").textContent=tipo+((cc.trocas||[]).length?" · "+cc.trocas.length+" troca(s)":"");
    box.classList.remove("pausa");
   }
  };
@@ -4277,8 +4364,7 @@ function pintaCrono(){
 function trocaFasePomodoro(){
  const c=cronoAtivo();if(!c||!c.pomodoro)return;
  if(c.fase==="foco"){
-  const min=Math.round((Date.now()-c.inicio)/60000);
-  if(min>=1){registraTempo(c.no,c.tipo,min);registraAtividade(min)}
+  creditaSegmento(c);
   c.ciclos=(c.ciclos||0)+1;
   c.fase="pausa";
   const longa=c.ciclos%4===0;
@@ -4391,6 +4477,69 @@ function abreCrono(noSugerido){
   iniciaCrono($("#crNo").value,tipoSel,comPomo);
   fechaModal();
  };
+}
+
+/* ---------------------------------------------------------------
+   MUDAR CONTEÚDO SEM PARAR O CRONÔMETRO
+   Trocar de assunto é mudança de tarefa dentro do mesmo bloco de foco,
+   não uma sessão nova. Antes era preciso parar e ligar de novo: o ciclo
+   do Pomodoro voltava ao zero e o relógio recomeçava, punindo quem faz
+   a coisa certa — intercalar assuntos. Agora só a conta muda de destino.
+   --------------------------------------------------------------- */
+function abreTrocaAssunto(noSugerido){
+ const c=cronoAtivo();
+ if(!c){abreCrono(noSugerido);return}
+ const atual=c.no;
+ let sel=(noSugerido&&NOMAP[noSugerido])?noSugerido:atual;
+ let tipoSel=c.tipo||"conteudo";
+ const nomeAtual=atual?((NOMAP[atual]||{}).titulo||atual):"sem nó específico";
+ const rest=c.pomodoro?Math.max(0,Math.round((c.fimFase-Date.now())/60000)):null;
+ let h='<h3 style="margin:0 0 4px">Mudar o conteúdo</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 11px;line-height:1.55">'+
+   'O cronômetro <b>não para</b>. O tempo já corrido vai para <b>'+esc(nomeAtual)+'</b> e, daqui em diante, passa a contar no assunto novo.'+
+   (c.pomodoro?(' O ciclo '+(c.ciclos+1)+' segue como está — '+(c.fase==="foco"?("faltam "+rest+" min para a pausa"):("faltam "+rest+" min de pausa"))+'.'):'')+
+  '</p>'+
+  '<input id="trBusca" placeholder="Filtrar assunto" autocomplete="off" style="width:100%;padding:9px 11px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface);margin-bottom:7px">'+
+  '<select id="trNo" size="8" style="width:100%;padding:5px;border:1px solid var(--line-2);border-radius:var(--radius-p);background:var(--surface-2);margin-bottom:11px">';
+ h+='<option value="">— sem nó específico —</option>';
+ GRUPOS.forEach(g=>{
+  h+='<optgroup label="'+esc(g.titulo)+'">';
+  (GRPNOS[g.id]||[]).forEach(n=>{
+   h+='<option value="'+esc(n.id)+'"'+(sel===n.id?" selected":"")+'>'+esc(n.titulo)+'</option>';
+  });
+  h+='</optgroup>';
+ });
+ h+='</select>'+
+  '<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px">atividade</div>'+
+  '<div id="trTipos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px"></div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="trOk">Trocar e continuar</button>'+
+  '<button class="btn sec" id="trX">Cancelar</button>'+
+  '<button class="btn sec" id="trPara">Parar o cronômetro</button></div>';
+ modal(h);
+ const pinta=()=>{
+  $("#trTipos").innerHTML="";
+  TIPOS_ESTUDO.forEach(([k,rot])=>{
+   const b=el("button","btn"+(tipoSel===k?"":" sec")+" sm",rot);
+   b.onclick=()=>{tipoSel=k;pinta()};
+   $("#trTipos").appendChild(b);
+  });
+ };
+ pinta();
+ const busca=$("#trBusca");
+ busca.oninput=()=>{
+  const q=busca.value.trim().toLowerCase();
+  Array.prototype.forEach.call($("#trNo").options,o=>{
+   const ok=!q||o.textContent.toLowerCase().indexOf(q)>=0||(o.value||"").toLowerCase().indexOf(q)>=0;
+   o.hidden=!ok;
+  });
+  const viv=Array.prototype.filter.call($("#trNo").options,o=>!o.hidden&&o.value);
+  if(q&&viv.length)$("#trNo").value=viv[0].value;
+ };
+ setTimeout(()=>{try{busca.focus()}catch(e){}},60);
+ $("#trX").onclick=fechaModal;
+ $("#trPara").onclick=()=>{fechaModal();paraCrono()};
+ $("#trOk").onclick=()=>{trocaAssuntoCrono($("#trNo").value,tipoSel);fechaModal()};
+ $("#trNo").ondblclick=()=>{trocaAssuntoCrono($("#trNo").value,tipoSel);fechaModal()};
 }
 
 /* ---------------- REVISÕES DE CONTEÚDO ---------------- */
@@ -4667,8 +4816,9 @@ VIEWS.rotina=function(v){
  bav.onclick=()=>{pedePermissaoAviso();setTimeout(()=>{
   const p=("Notification" in window)?Notification.permission:"indisponível";
   toast("Aviso do sistema",p==="granted"?"Permitido — você será avisada mesmo com a aba em segundo plano.":p==="denied"?"Bloqueado no navegador. Libere nas permissões do site.":"Não disponível neste navegador.", p==="granted"?"ok":"");},600)};
- const bc=el("button","btn");bc.style.cssText="margin-top:13px;display:block";bc.textContent="Ligar o cronômetro agora";
- bc.onclick=()=>abreCrono();
+ const bc=el("button","btn");bc.style.cssText="margin-top:13px;display:block";
+ bc.textContent=cronoAtivo()?"Mudar o conteúdo do cronômetro":"Ligar o cronômetro agora";
+ bc.onclick=()=>cronoAtivo()?abreTrocaAssunto():abreCrono();
  const linha=el("div");linha.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center";
  linha.appendChild(bsom);linha.appendChild(bav);
  cm.appendChild(linha);cm.appendChild(bc);
@@ -4971,8 +5121,8 @@ function blocoTempo(){
  c.appendChild(el("h3",null,ic("crono",15)+"Onde gastei o tempo × onde vale ponto <span class='hint'>últimos 30 dias</span>"));
  c.appendChild(graficoHorasVsPeso(30));
  const bb=el("div");bb.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px";
- const b1=el("button","btn sm",cronoAtivo()?"Parar o cronômetro":"Ligar o cronômetro");
- b1.onclick=()=>cronoAtivo()?paraCrono():abreCrono();bb.appendChild(b1);
+ const b1=el("button","btn sm",cronoAtivo()?"Mudar ou parar o cronômetro":"Ligar o cronômetro");
+ b1.onclick=()=>cronoAtivo()?abreTrocaAssunto():abreCrono();bb.appendChild(b1);
  const b2=el("button","btn sec sm","Minha rotina");b2.onclick=()=>vai("rotina");bb.appendChild(b2);
  c.appendChild(bb);
  return c;
@@ -5542,6 +5692,7 @@ const TELAS=[
    ["Minutos por dia da semana","Declare o tempo real, não o desejado. A meta diária e o plano passam a caber nele: um domingo de zero minuto deixa de cobrar meta e não recebe nó; um sábado de cinco horas recebe mais."],
    ["O que essa rotina alcança","A conta de quantas horas sobram até 29/11 e se elas cobrem o que falta. Enquanto não houver cronômetro suficiente, uso 4 minutos por bloco ou questão como estimativa — depois o número passa a ser o seu ritmo medido."],
    ["Pomodoro","Foco, pausa curta e pausa longa, configuráveis. Na troca de fase o cronômetro toca — descendo ao entrar na pausa, subindo ao voltar ao foco —, vibra no celular e manda aviso do sistema, para você não precisar olhar a tela. Se o som não sair, use “Ouvir o toque” aqui: navegador só toca áudio depois de um clique seu. Dá para desligar."],
+   ["Mudar de assunto sem parar o relógio","Trocar o que você está estudando é troca de tarefa dentro do mesmo bloco de foco, não sessão nova. Use “Mudar conteúdo” na barra do cronômetro, ou “Contar o tempo aqui” dentro do módulo: o tempo já corrido é lançado no assunto anterior, a contagem continua de onde estava e o ciclo do Pomodoro não se mexe — a pausa cai na mesma hora que ia cair."],
    ["Como cada assunto parece para você","A escala de fácil a “não entendi”, por nó, virando mapa de calor. Entra na prioridade como segundo sinal e acusa descalibração: nó que você marcou como fácil e erra muito é excesso de confiança — exatamente o que o distrator de literalidade pune."]]},
  {id:"cartoes",tom:"saude",nm:"Flashcards",ic:"cartao",oq:"Repetição espaçada. É aqui que a memória de longo prazo se forma.",
   itens:[
@@ -5666,7 +5817,7 @@ VIEWS.tutor=function(v){
    ". Já respondi "+totalRespondidas()+" questões no total. Siga o esquema do corpus, com explicação de cada alternativa errada e citação literal do dispositivo, e republique o artifact na mesma URL.";}],
   ["Recalibrar meu plano de estudos",()=>{
    const l=NOS.map(n=>n.id+"="+pct(mastery(n.id))+"%").join(", ");
-   return "Recalibre meu plano de estudos do PETROPSI. Faltam "+diasEntre(hoje(),PROVA.toISOString().slice(0,10))+
+   return "Recalibre meu plano de estudos do PETROPSI. Faltam "+diasEntre(hoje(),isoLocal(PROVA))+
    " dias para a prova. Estudo cerca de "+(S.perfil.horasSemana||12)+" horas por semana. Domínio por nó: "+l+
    ". Nota projetada Fase 1: "+notaProjetada().f1.toFixed(1)+" de 50. Monte o cronograma até 29/11/2026 e republique o artifact na mesma URL.";}],
   ["Aprofundar um tópico",()=>"Aprofunde o módulo de conteúdo do PETROPSI para o nó [ESCREVA O NÓ AQUI]. Quero mais transcrições literais, uma tabela comparativa nova e três casos aplicados à realidade da Transpetro. Republique o artifact na mesma URL."],
@@ -5866,7 +6017,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Correção urgente (2.4.1):</b> na versão anterior, um assunto que você concluía era retirado do dia — inclusive do <b>dia de hoje</b>. O registro continuava salvo, mas sumia da tela, e não havia como saber disso. Agora <b>nenhum dia perde um assunto em que houve trabalho registrado nele</b>, protegido em três pontos independentes, com um teste automático que trava essa falha. A recuperação também mudou: além de “Voltar exatamente”, existe <b>“Recuperar somando”</b>, que traz de volta o que sumiu <b>sem apagar o que veio depois</b>. A lista de cópias mostra a hora, o que cada uma contém, qual é a mais completa, e avisa quanto você perderia numa substituição. O sistema também passou a guardar cópias ao longo do dia, e não só uma no começo dele.<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Correção (2.4.3) — trocar de assunto não reinicia o Pomodoro.</b> Mudar o que você está estudando é <b>troca de tarefa dentro do mesmo bloco de foco</b>, não uma sessão nova. Antes era preciso parar e ligar de novo: o relógio voltava a zero e o ciclo do Pomodoro recomeçava — o sistema punia justamente quem intercala assuntos, que é o que a pesquisa recomenda. Agora a barra do cronômetro tem <b>“Mudar conteúdo”</b>: o tempo já corrido é lançado no assunto anterior, a contagem segue do ponto onde estava, o ciclo e a hora da pausa não se mexem, e a troca fica registrada. Dentro de cada módulo há também <b>“Contar o tempo aqui”</b>, um clique só. Os minutos que sobram abaixo de um minuto deixaram de ser descartados a cada troca — ficam guardados e entram na conta seguinte.<br><br><b>Correção (2.4.2):</b> o dia virava às 21h. O sistema pegava a data pelo relógio de Greenwich, e não pelo seu: às 21h no horário de Brasília já era o dia seguinte em Londres, então a meta zerava, as missões reiniciavam e tudo o que você estudasse das 21h à meia-noite era lançado no dia seguinte. Agora a data é montada a partir do relógio do seu aparelho, e o dia só começa à meia-noite. A contagem de dias entre datas passou a ser ancorada ao meio-dia, para não errar em virada de horário de verão.<br><br><b>Correção urgente (2.4.1):</b> na versão anterior, um assunto que você concluía era retirado do dia — inclusive do <b>dia de hoje</b>. O registro continuava salvo, mas sumia da tela, e não havia como saber disso. Agora <b>nenhum dia perde um assunto em que houve trabalho registrado nele</b>, protegido em três pontos independentes, com um teste automático que trava essa falha. A recuperação também mudou: além de “Voltar exatamente”, existe <b>“Recuperar somando”</b>, que traz de volta o que sumiu <b>sem apagar o que veio depois</b>. A lista de cópias mostra a hora, o que cada uma contém, qual é a mais completa, e avisa quanto você perderia numa substituição. O sistema também passou a guardar cópias ao longo do dia, e não só uma no começo dele.<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
  v.appendChild(c4);
 };
 
@@ -5922,8 +6073,9 @@ function pintaPpt(){
 }
 $("#pptPrev").onclick=()=>{if(PPT.i>0){PPT.i--;pintaPpt()}};
 $("#pptNext").onclick=()=>{if(PPT.i<PPT.slides.length-1){PPT.i++;pintaPpt()}};
-$("#cronoP").onclick=()=>paraCrono();
-$("#crono").addEventListener("click",e=>{if(e.target.id!=="cronoP")vai("desempenho")});
+$("#cronoP").onclick=e=>{e.stopPropagation();paraCrono()};
+$("#cronoM").onclick=e=>{e.stopPropagation();abreTrocaAssunto()};
+$("#crono").addEventListener("click",e=>{if(e.target.id!=="cronoP"&&e.target.id!=="cronoM")vai("desempenho")});
 $("#iabtn").innerHTML=ic("ia",26);
 $("#iapane").querySelector(".ii").innerHTML=ic("ia",17);
 $("#iabtn").onclick=()=>{$("#iapane").classList.contains("on")?fechaIA():abreIA()};
