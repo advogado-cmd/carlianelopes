@@ -906,7 +906,7 @@ html.trancado #app,html.trancado #bottom{display:none!important}
 /* =========================================================
    PETROPSI — Central de Estudos · TRANSPETRO / Cesgranrio
    ========================================================= */
-const VERSAO="2.6.0", PROVA=new Date(2026,10,29);
+const VERSAO="2.7.0", PROVA=new Date(2026,10,29);
 const CORPUS=JSON.parse(document.getElementById("petropsi-corpus").textContent);
 const NOS=CORPUS.nos, GRUPOS=CORPUS.grupos, QS=CORPUS.questoes, FCS=CORPUS.flashcards,
       CONT=CORPUS.conteudo, VADE=CORPUS.vademecum, FAQ=CORPUS.faq, ANUL=(CORPUS.anuladas||[]);
@@ -2337,6 +2337,35 @@ VIEWS.painel=function(v){
 
  // ---- meta do dia ----
  const M=metaDiaria();
+ /* O último simulado fica à vista no painel. Ele estava vivo só até o
+    primeiro clique depois da correção — e uma prova de 4h30 que some da
+    tela é trabalho dela virando nada. */
+ {const ult=(S.simulados||[]).slice(-1)[0];
+  if(ult){
+   const idx=S.simulados.length-1;
+   const p=ult.total?ult.acertos/ult.total:0;
+   const cs=el("div","card tom-"+(p<0.5?"nr":p<0.7?"diag":"social"));
+   cs.style.cssText="margin-bottom:13px;border-left:4px solid var(--tom)";
+   const dias=diasEntre(ult.data,hoje());
+   cs.innerHTML='<div class="mono" style="font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--tom);margin-bottom:5px">último simulado · '+
+     (dias<=0?"hoje":dias===1?"ontem":"há "+dias+" dias")+'</div>'+
+    '<div style="display:flex;gap:13px;align-items:baseline;flex-wrap:wrap">'+
+    '<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em">'+ult.acertos+'<span style="font-size:16px;opacity:.6">/'+ult.total+'</span></span>'+
+    '<span class="pill '+(p<0.5?"crit":p<0.7?"warn":"ok")+'">'+pct(p)+'%</span>'+
+    '<span style="font-size:13px;color:var(--ink-2)">'+esc(ult.titulo||ult.modo)+
+     (ult.totalF1?' · Fase 1 '+ult.acertosF1+'/'+ult.totalF1:'')+
+     (ult.totalF2?' · Fase 2 '+ult.acertosF2+'/'+ult.totalF2:'')+
+     ' · '+hhmmss(ult.duracaoS||0)+'</span></div>';
+   const bb=el("div");bb.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px";
+   if(ult.ids&&ult.ids.length){
+    const b1=el("button","btn sm","Ver a avaliação completa");b1.onclick=()=>vai("resultado",String(idx));
+    const b2=el("button","btn sec sm","Imprimir a prova");b2.onclick=()=>menuImprimirProva(idx);
+    bb.appendChild(b1);bb.appendChild(b2);
+   }
+   const b3=el("button","btn sec sm","Todas as provas");b3.onclick=()=>vai("simulados");bb.appendChild(b3);
+   cs.appendChild(bb);
+   v.appendChild(cs);
+  }}
  const cm0=el("div","meta");cm0.style.marginBottom="13px";
  const hd=el("div","mh");
  hd.innerHTML=ic("alvo",17)+'<h3>Meta de hoje</h3>'+
@@ -3568,8 +3597,22 @@ function encerraSessao(){
  const dur=Math.round((Date.now()-SES.inicio)/1000);
  SES.fim=Date.now();SES.resultado={acertos:ac,total:SES.ids.length,f1:f1,tf1:tf1,f2:f2,tf2:tf2,dur:dur,
    porNo:porNo,porNivel:porNivel,semResposta:semResposta};
- S.simulados.push({modo:SES.modo,titulo:SES.titulo,data:hoje(),acertos:ac,total:SES.ids.length,
-   acertosF1:f1,totalF1:tf1,acertosF2:f2,totalF2:tf2,duracaoS:dur,porNo:porNo});
+ /* Guarda a PROVA, não só o placar. Antes só o resumo era gravado: a tela de
+    resultado morria no primeiro clique e não havia como reabrir nem imprimir
+    o que ela tinha respondido. O detalhe fica nos 40 mais recentes; acima
+    disso, só o resumo — o histórico nunca é apagado. */
+ S.simulados.push({id:"SIM-"+Date.now().toString(36),modo:SES.modo,titulo:SES.titulo,data:hoje(),
+   em:new Date().toISOString(),acertos:ac,total:SES.ids.length,
+   acertosF1:f1,totalF1:tf1,acertosF2:f2,totalF2:tf2,duracaoS:dur,porNo:porNo,
+   porNivel:porNivel,semResposta:semResposta,limite:SES.limite||0,
+   ids:SES.ids.slice(),respostas:Object.assign({},SES.respostas),
+   marcadas:Object.keys(SES.marcadas||{}).filter(k=>SES.marcadas[k])});
+ if(S.simulados.length>40){
+  for(let i=0;i<S.simulados.length-40;i++){
+   const x=S.simulados[i];
+   if(x&&x.ids){delete x.ids;delete x.respostas;delete x.marcadas;x.resumido=true}
+  }
+ }
  ganhaXp(SES.modo==="completo"?XP.simuladoCompleto:XP.simuladoBloco);
  registraAtividade(Math.round(dur/60));recalcTudo();checaConquistas();salva();salvaSessao();roteia();
 }
@@ -3663,11 +3706,46 @@ function analiseDesempenho(r,ids,respostas,modo){
  f.push({t:"O que fazer agora",x:acao});
  return {p:p,faixa:faixa,tom:tomFaixa,titulo:vereditoTitulo,frases:f,linhasNo:linhasNo,segPorQuestao:seg};
 }
+/* Reabre um simulado do histórico como se a sessão tivesse acabado agora.
+   Marcado como arquivado: nada é regravado, nenhuma tentativa é contada de
+   novo, e a tela sabe que está lendo o passado. */
+function abreResultado(idx){
+ const s=(S.simulados||[])[idx];
+ if(!s){toast("Simulado não encontrado","","");return false}
+ if(!s.ids||!s.ids.length){
+  toast("Sem o detalhe desta prova","Este simulado é anterior à versão que passou a guardar a prova inteira. O placar continua no histórico, mas as questões não foram gravadas.","");
+  return false;
+ }
+ SES={modo:s.modo,titulo:s.titulo,ids:s.ids.slice(),idx:0,
+      respostas:Object.assign({},s.respostas||{}),marcadas:{},
+      inicio:Date.now()-(s.duracaoS||0)*1000,limite:s.limite||0,fim:Date.now(),
+      arquivado:true,arquivoIdx:idx,
+      resultado:{acertos:s.acertos,total:s.total,f1:s.acertosF1,tf1:s.totalF1,
+        f2:s.acertosF2,tf2:s.totalF2,dur:s.duracaoS||0,porNo:s.porNo||{},
+        porNivel:s.porNivel||{},semResposta:s.semResposta||0}};
+ (s.marcadas||[]).forEach(id=>SES.marcadas[id]=true);
+ salvaSessao();
+ return true;
+}
+VIEWS.resultado=function(v,arg){
+ const idx=parseInt(arg,10);
+ if(!SES||!SES.fim||SES.arquivoIdx!==idx){ if(!abreResultado(idx)){vai("simulados");return} }
+ renderResultado(v);
+};
 function renderResultado(v){
  const r=SES.resultado,pctAc=r.total?r.acertos/r.total:0;
  const A=analiseDesempenho(r,SES.ids,SES.respostas,SES.modo);
  v.appendChild(el("h1","vt",/^(Avalia|Simulado|Treino|Corre)/.test(SES.titulo)?esc(SES.titulo):("Avaliação — "+esc(SES.titulo))));
- v.appendChild(el("p","vs","Esta é a leitura do seu desempenho. As correções vêm depois, no botão do fim da página — primeiro o número e o que ele significa, senão a sessão termina toda verde e some a medida."));
+ const arq=SES.arquivado?((S.simulados||[])[SES.arquivoIdx]||{}):null;
+ v.appendChild(el("p","vs",arq
+  ? ("Prova de "+esc((arq.data||"").split("-").reverse().join("/"))+", guardada por inteiro. Você pode reabrir esta tela quantas vezes quiser, rever a correção e imprimir o caderno completo.")
+  : "Esta é a leitura do seu desempenho. As correções vêm depois, no botão do fim da página — primeiro o número e o que ele significa, senão a sessão termina toda verde e some a medida."));
+ if(!arq){
+  const guardado=el("div");
+  guardado.style.cssText="font-size:12.5px;color:var(--ok);margin:-6px 0 13px";
+  guardado.textContent="Esta prova ficou guardada em Simulados → Histórico: dá para reabrir esta tela e imprimir o caderno a qualquer momento.";
+  v.appendChild(guardado);
+ }
 
  /* ---------- quantitativo ---------- */
  const ces=SES.ids.map(qById).filter(x=>x.formato==="certoErrado");
@@ -3785,8 +3863,174 @@ function renderResultado(v){
  const acts=el("div");acts.style.cssText="display:flex;gap:8px;flex-wrap:wrap";
  const b2=el("button","btn sec","Abrir o caderno de erros");b2.onclick=()=>{SES=null;salvaSessao();vai("erros")};acts.appendChild(b2);
  const bImp=botaoImprimir("Imprimir esta avaliação",()=>imprimeAvaliacao(A,r));acts.appendChild(bImp);
+ // a prova inteira no papel, tanto agora quanto anos depois pelo histórico
+ {const iSim=SES.arquivado?SES.arquivoIdx:(S.simulados||[]).length-1;
+  const reg=(S.simulados||[])[iSim];
+  if(reg&&reg.ids&&reg.ids.length){
+   acts.appendChild(botaoImprimir("Imprimir a prova completa",()=>menuImprimirProva(iSim)));
+  }}
+ if(SES.arquivado){
+  const bH=el("button","btn sec","Todas as provas");bH.onclick=()=>{SES=null;salvaSessao();vai("simulados")};acts.appendChild(bH);
+ }
  const b3=el("button","btn sec","Voltar ao painel");b3.onclick=()=>{SES=null;salvaSessao();vai("painel")};acts.appendChild(b3);
  v.appendChild(acts);
+}
+/* =========================================================
+   IMPRESSÃO DO CADERNO COMPLETO
+   Ela pediu a prova inteira no papel — e há duas provas diferentes aí:
+   a que ela já fez (com o que marcou, o gabarito e o porquê de cada
+   alternativa) e a que ela quer refazer daqui a um mês (em branco, com o
+   gabarito numa folha separada). As duas saem daqui.
+   ========================================================= */
+function blocoTextoBase(q,jaSaiu){
+ const t=textoDe(q);
+ if(!t)return "";
+ const ch=q.textoId||("t-"+q.id);
+ if(jaSaiu[ch])return '<div class="pbase-ref">Texto '+esc(t.titulo||ch)+' — reproduzido acima.</div>';
+ jaSaiu[ch]=true;
+ return '<div class="pbase">'+(t.titulo?'<div class="pbase-t">'+esc(t.titulo)+'</div>':'')+
+   '<div class="pbase-c">'+esc(t.conteudo).replace(/\n/g,"<br>")+'</div>'+
+   (t.fonte?'<div class="pbase-f">'+esc(t.fonte)+'</div>':'')+'</div>';
+}
+function questaoParaPapel(q,n,opt){
+ opt=opt||{};
+ const dada=opt.resposta||null;
+ let h='<div class="pq">';
+ h+='<div class="pq-cab"><span class="pq-n">'+n+'</span>'+
+   '<span class="pq-meta">'+esc(q.id)+' · '+esc(q.no)+' · '+esc(q.nivel||"")+' · '+esc(q.banca||"")+
+   (q.origem==="prova-anterior"?' · prova real':'')+
+   (q.provaOrigem?' · '+esc(q.provaOrigem):'')+'</span></div>';
+ h+=opt.textoBase||"";
+ h+='<div class="pq-en">'+esc(q.enunciado).replace(/\n/g,"<br>")+'</div>';
+ h+='<div class="pq-alts">';
+ q.alternativas.forEach(a=>{
+  const marcada=dada===a.letra, certa=!!a.correta;
+  let cls="pq-alt";
+  if(opt.comGabarito){ if(certa)cls+=" pq-certa"; if(marcada&&!certa)cls+=" pq-errada"; }
+  h+='<div class="'+cls+'"><span class="pq-l">'+esc(a.letra)+'</span><span class="pq-tx">'+esc(a.texto);
+  if(opt.comGabarito){
+   const sinais=[];
+   if(certa)sinais.push("gabarito");
+   if(marcada)sinais.push("você marcou");
+   if(sinais.length)h+=' <span class="pq-sig">['+sinais.join(" · ")+']</span>';
+   if(!certa&&a.porQueErrada)h+='<span class="pq-pq"><b>Por que está errada:</b> '+esc(a.porQueErrada)+'</span>';
+  }
+  h+='</span></div>';
+ });
+ h+='</div>';
+ if(opt.comGabarito){
+  if(!dada)h+='<div class="pq-nr">Sem resposta — conta como erro.</div>';
+  h+='<div class="pq-exp"><b>Gabarito '+esc(q.gabarito)+'.</b> '+esc(q.explicacao||"")+'</div>';
+  if(q.pegadinha)h+='<div class="pq-peg"><b>Pegadinha:</b> '+esc(q.pegadinha)+'</div>';
+  if(q.fundamento&&q.fundamento.citacao){
+   h+='<div class="pq-fund"><b>'+esc(q.fundamento.norma||"")+
+     (q.fundamento.dispositivo?", "+esc(q.fundamento.dispositivo):"")+'</b><br>“'+esc(q.fundamento.citacao)+'”</div>';
+  }
+ }else{
+  h+='<div class="pq-resp">Resposta: (&nbsp;&nbsp;&nbsp;)</div>';
+ }
+ h+='</div>';
+ return h;
+}
+const CSS_PROVA=`
+.pq{page-break-inside:avoid;margin:0 0 15pt;padding-bottom:9pt;border-bottom:1px solid #ddd}
+.pq-cab{display:flex;gap:8pt;align-items:baseline;margin-bottom:5pt}
+.pq-n{font-weight:700;font-size:12pt;min-width:22pt}
+.pq-meta{font-family:monospace;font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.04em}
+.pq-en{font-size:10.5pt;line-height:1.5;margin:0 0 7pt;text-align:justify}
+.pq-alts{margin:0 0 6pt}
+.pq-alt{display:flex;gap:7pt;font-size:10pt;line-height:1.45;padding:2.5pt 4pt;align-items:flex-start}
+.pq-l{font-weight:700;min-width:14pt}
+.pq-tx{flex:1}
+.pq-certa{background:#eef7f1;border-left:2.5pt solid #1F6B4C}
+.pq-errada{background:#fdeeea;border-left:2.5pt solid #A32E1E}
+.pq-sig{font-family:monospace;font-size:7.5pt;color:#555;text-transform:uppercase;letter-spacing:.04em}
+.pq-pq{display:block;font-size:9pt;color:#444;margin-top:2.5pt;padding-left:2pt;border-left:1.5pt solid #ccc}
+.pq-exp{font-size:9.5pt;line-height:1.5;background:#f6f6f4;padding:6pt 8pt;margin-top:5pt}
+.pq-peg{font-size:9.5pt;line-height:1.45;margin-top:4pt;border-left:2.5pt solid #8A5408;padding-left:7pt}
+.pq-fund{font-size:9pt;line-height:1.45;margin-top:4pt;border-left:2.5pt solid #175E80;padding-left:7pt;color:#222}
+.pq-nr{font-size:9pt;color:#A32E1E;font-weight:700;margin-top:3pt}
+.pq-resp{font-family:monospace;font-size:10pt;margin-top:5pt}
+.pbase{border:1px solid #ccc;padding:8pt 10pt;margin:0 0 8pt;background:#fafaf8;page-break-inside:avoid}
+.pbase-t{font-weight:700;font-size:10pt;margin-bottom:4pt}
+.pbase-c{font-size:9.5pt;line-height:1.5;text-align:justify}
+.pbase-f{font-family:monospace;font-size:8pt;color:#555;margin-top:5pt;border-top:1px solid #ddd;padding-top:4pt}
+.pbase-ref{font-size:9pt;color:#555;font-style:italic;margin-bottom:6pt}
+.pgab{display:flex;flex-wrap:wrap;gap:3pt;margin-top:8pt}
+.pgab span{font-family:monospace;font-size:9.5pt;border:1px solid #bbb;padding:2.5pt 5pt;min-width:34pt;text-align:center}
+.pgab .gx{background:#fdeeea;font-weight:700}
+.pgab .gv{background:#eef7f1}
+.pfolha{page-break-before:always}
+`;
+function cabecalhoProva(s,sub){
+ const p=s.total?s.acertos/s.total:0;
+ return '<div style="border:1.5pt solid #222;padding:9pt 12pt;margin:0 0 14pt">'+
+  '<div style="font-family:monospace;font-size:8pt;letter-spacing:.09em;text-transform:uppercase;color:#555">PETROPSI · Transpetro / Cesgranrio · prova em 29/11/2026</div>'+
+  '<div style="font-size:14pt;font-weight:700;margin:3pt 0 2pt">'+esc(s.titulo||s.modo||"Simulado")+'</div>'+
+  '<div style="font-size:10pt;color:#333">'+esc(sub)+'</div>'+
+  '<div style="font-size:10pt;margin-top:5pt"><b>'+s.acertos+' de '+s.total+'</b> ('+pct(p)+'%) · '+
+   (s.totalF1?'Fase 1 '+s.acertosF1+'/'+s.totalF1+' · ':'')+
+   (s.totalF2?'Fase 2 '+s.acertosF2+'/'+s.totalF2+' · ':'')+
+   'tempo '+hhmmss(s.duracaoS||0)+' · aplicada em '+esc((s.data||"").split("-").reverse().join("/"))+'</div>'+
+  '</div>';
+}
+function imprimeSimulado(idx,comGabarito){
+ const s=(S.simulados||[])[idx];
+ if(!s){toast("Simulado não encontrado","","");return}
+ if(!s.ids||!s.ids.length){
+  toast("Sem o detalhe desta prova","Este simulado é anterior à versão que passou a guardar a prova inteira — só o placar foi gravado.","");
+  return;
+ }
+ const qs=s.ids.map(id=>QMAP[id]).filter(Boolean);
+ const faltando=s.ids.length-qs.length;
+ const jaSaiu={};
+ let corpo='<style>'+CSS_PROVA+'</style>';
+ corpo+=cabecalhoProva(s,comGabarito?"Caderno completo, com o que você marcou, o gabarito e a explicação de cada alternativa"
+   :"Caderno em branco, para refazer no papel. O gabarito está na última folha.");
+ if(faltando)corpo+='<p style="font-size:9.5pt;color:#8A5408"><b>Aviso:</b> '+faltando+' questão(ões) desta prova não está(ão) mais no banco e não pôde(puderam) ser reproduzida(s).</p>';
+ qs.forEach((q,i)=>{
+  corpo+=questaoParaPapel(q,i+1,{resposta:(s.respostas||{})[q.id],comGabarito:comGabarito,
+    textoBase:blocoTextoBase(q,jaSaiu)});
+ });
+ // folha de gabarito
+ corpo+='<div class="pfolha"><h2>Gabarito</h2>';
+ corpo+='<div class="pgab">';
+ qs.forEach((q,i)=>{
+  const dada=(s.respostas||{})[q.id];
+  const ok=dada===q.gabarito;
+  corpo+='<span class="'+(comGabarito?(ok?"gv":"gx"):"")+'">'+(i+1)+'. '+esc(q.gabarito)+
+    (comGabarito&&dada&&!ok?' <s>'+esc(dada)+'</s>':'')+'</span>';
+ });
+ corpo+='</div>';
+ if(comGabarito){
+  const errs=qs.filter(q=>(s.respostas||{})[q.id]!==q.gabarito);
+  corpo+='<p style="font-size:10pt;margin-top:12pt">Em vermelho, as '+errs.length+' que você errou ou deixou em branco. '+
+   'O riscado é a alternativa que você marcou.</p>';
+ }
+ corpo+='</div>';
+ imprime((s.titulo||"Simulado")+(comGabarito?" — comentado":" — em branco"),
+   "PETROPSI · "+(s.data||"").split("-").reverse().join("/")+" · "+qs.length+" questões",corpo);
+}
+function menuImprimirProva(idx){
+ const s=(S.simulados||[])[idx]||{};
+ modal('<h3 style="margin:0 0 4px">Imprimir esta prova</h3>'+
+  '<p style="font-size:13px;color:var(--ink-2);margin:0 0 13px;line-height:1.55">'+
+  esc(s.titulo||"Simulado")+' · '+esc((s.data||"").split("-").reverse().join("/"))+' · '+(s.total||0)+' questões.<br>'+
+  'A caixa de impressão do navegador tem <b>Salvar como PDF</b>.</p>'+
+  '<div style="display:flex;flex-direction:column;gap:8px">'+
+   '<button class="btn" id="ipCom" style="justify-content:flex-start;text-align:left">Caderno comentado<span style="font-weight:400;opacity:.85"> — com o que você marcou, o gabarito e o porquê de cada alternativa</span></button>'+
+   '<button class="btn sec" id="ipBra" style="justify-content:flex-start;text-align:left">Caderno em branco<span style="font-weight:400;opacity:.85"> — para refazer no papel, com o gabarito na última folha</span></button>'+
+   '<button class="btn sec" id="ipAva" style="justify-content:flex-start;text-align:left">Só a avaliação<span style="font-weight:400;opacity:.85"> — a leitura do desempenho, sem as questões</span></button>'+
+  '</div><div style="margin-top:13px"><button class="btn sec sm" id="ipX">Fechar</button></div>');
+ $("#ipX").onclick=fechaModal;
+ $("#ipCom").onclick=()=>{fechaModal();setTimeout(()=>imprimeSimulado(idx,true),120)};
+ $("#ipBra").onclick=()=>{fechaModal();setTimeout(()=>imprimeSimulado(idx,false),120)};
+ $("#ipAva").onclick=()=>{
+  fechaModal();
+  if(!abreResultado(idx))return;
+  const A=analiseDesempenho(SES.resultado,SES.ids,SES.respostas,SES.modo);
+  setTimeout(()=>imprimeAvaliacao(A,SES.resultado),120);
+ };
 }
 function imprimeAvaliacao(A,r){
  let h='<h2>'+esc(SES?SES.titulo:"Avaliação")+'</h2>';
@@ -3851,16 +4095,34 @@ VIEWS.simulados=function(v){
  v.appendChild(g);
  if(S.simulados.length){
   const c=el("div","card");c.style.marginTop="13px";
-  c.appendChild(el("h3",null,"Histórico"));
+  c.appendChild(el("h3",null,"Provas que você já fez <span class='hint'>"+S.simulados.length+"</span>"));
+  c.appendChild(el("div",null,'<div style="font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:11px">'+
+   'Nenhuma prova se perde. Cada uma fica guardada por inteiro — as questões, o que você marcou e o tempo — e você reabre a avaliação quando quiser ou leva o caderno para o papel.</div>'));
   const t=el("div","scrollx");const tb=el("table","t");
-  tb.innerHTML="<thead><tr><th>Data</th><th>Modo</th><th>Acertos</th><th>Fase 1</th><th>Fase 2</th><th>Tempo</th></tr></thead>";
+  tb.innerHTML="<thead><tr><th>Data</th><th>Prova</th><th>Acertos</th><th>Fase 1</th><th>Fase 2</th><th>Tempo</th><th></th></tr></thead>";
   const bd=el("tbody");
-  S.simulados.slice().reverse().slice(0,25).forEach(s=>{
-   bd.appendChild(el("tr",null,"<td class='mono' style='font-size:11.5px'>"+esc(s.data.split("-").reverse().join("/"))+"</td><td>"+esc(s.titulo||s.modo)+"</td>"+
-    "<td class='mono'>"+s.acertos+"/"+s.total+"</td><td class='mono'>"+(s.totalF1?s.acertosF1+"/"+s.totalF1:"—")+"</td>"+
-    "<td class='mono'>"+(s.totalF2?s.acertosF2+"/"+s.totalF2:"—")+"</td><td class='mono'>"+hhmmss(s.duracaoS||0)+"</td>"));
+  S.simulados.map((x,i)=>({x,i})).reverse().slice(0,40).forEach(({x,i})=>{
+   const p=x.total?x.acertos/x.total:0;
+   const tr=el("tr");
+   tr.innerHTML="<td class='mono' style='font-size:11.5px'>"+esc((x.data||"").split("-").reverse().join("/"))+"</td>"+
+    "<td>"+esc(x.titulo||x.modo)+(x.ids?"":" <span class='pill'>só o placar</span>")+"</td>"+
+    "<td class='mono'><b style='color:var(--"+(p<0.5?"crit":p<0.7?"warn":"ok")+")'>"+x.acertos+"/"+x.total+"</b> · "+pct(p)+"%</td>"+
+    "<td class='mono'>"+(x.totalF1?x.acertosF1+"/"+x.totalF1:"—")+"</td>"+
+    "<td class='mono'>"+(x.totalF2?x.acertosF2+"/"+x.totalF2:"—")+"</td>"+
+    "<td class='mono'>"+hhmmss(x.duracaoS||0)+"</td><td></td>";
+   const acao=el("div");acao.style.cssText="display:flex;gap:5px;flex-wrap:wrap";
+   if(x.ids&&x.ids.length){
+    const b1=el("button","btn sm","Ver resultado");b1.onclick=()=>vai("resultado",String(i));
+    const b2=el("button","btn sec sm","Imprimir");b2.onclick=()=>menuImprimirProva(i);
+    acao.appendChild(b1);acao.appendChild(b2);
+   }else{
+    acao.appendChild(el("span",null,'<span style="font-size:11.5px;color:var(--ink-3)">anterior à gravação completa</span>'));
+   }
+   tr.lastChild.appendChild(acao);bd.appendChild(tr);
   });
-  tb.appendChild(bd);t.appendChild(tb);c.appendChild(t);v.appendChild(c);
+  tb.appendChild(bd);t.appendChild(tb);c.appendChild(t);
+  if(S.simulados.length>40)c.appendChild(el("div",null,'<div style="font-size:12px;color:var(--ink-3);margin-top:7px">Mostrando as 40 mais recentes de '+S.simulados.length+'. O placar de todas continua guardado.</div>'));
+  v.appendChild(c);
  }
 };
 function escolheBloco(){
@@ -6944,7 +7206,7 @@ VIEWS.config=function(v){
   ' Bancas representadas: '+[...new Set(QS.map(q=>q.banca))].sort().join(", ")+'.'+
   '<br><br><b>O que ainda não está pronto:</b> os nós de Psicologia Organizacional, Diagnóstico e intervenção, Psicologia Social e Saúde do Trabalhador têm questões (autorais e de provas reais de várias bancas), mas ainda não têm módulo de conteúdo, flashcards nem áudio próprios — só Ética, Resoluções do CFP, as sete NRs, Português e Inglês têm. Mapas mentais, vídeos e plano de estudos dia a dia entram nas próximas versões.'+
   '<br><br><b>Fontes normativas verificadas em 25/08/2026</b> nos sites oficiais (gov.br/MTE, CFP e Imprensa Nacional). Nenhuma citação foi escrita de memória.'+
-  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.6.0) — a trilha de vídeos.</b> <b>Aviso de atualidade colado em cada vídeo.</b> Tentei descobrir a data de publicação de cada um e não é possível: a página do YouTube recusa consulta automatizada. Então o aviso não fala da idade do vídeo — fala de <b>quando a norma mudou</b>, que é o dado que decide a questão e que está conferido nas fontes oficiais guardadas aqui. Embaixo de cada vídeo de NR ou de resolução aparece uma legenda: <b>verde</b> quando o próprio título prova que ele trata do texto vigente (a NR-01 de 2026, a Portaria de 03/08/2022 da NR-4, a Resolução 31/2022), e <b>âmbar</b> quando não dá para saber — dizendo a data a partir da qual o texto mudou e o que mudou, com um botão que abre a norma no vade-mécum ali mesmo. Há filtro para ver só os que têm aviso. Nova tela <b>Vídeos</b>, com <b>101 aulas do YouTube</b> escolhidas por assunto do edital e agrupadas pelos oito blocos, com as mesmas cores que o resto do sistema usa. Cada vídeo diz de que <b>tipo</b> é — visão geral para começar do zero, aprofundamento para depois de ler o módulo, resolução de questões para depois de errar — e por que foi escolhido. Dá para filtrar por bloco, por tipo, buscar por canal ou assunto, e separar o que falta do que já foi visto. O player só nasce quando você clica: nenhum vídeo carrega sozinho, o celular não trava. Marcar como assistido conta como estudo daquele assunto e entra no registro do dia, como qualquer outra atividade.<br><br><b>Como a lista foi montada, e por que isso importa.</b> Os 101 links foram verificados <b>um a um</b> no endpoint oficial de incorporação do YouTube, que só responde quando o vídeo existe, é público e aceita ser incorporado. O título e o nome do canal que aparecem na tela são os que o próprio YouTube devolveu — não foram digitados por ninguém, e por isso não há como estarem trocados. Nenhum link entrou por lembrança: os 101 responderam, e o que não respondesse não entraria.<br><br><b>O que a verificação não garante</b> é que o conteúdo esteja atualizado — as NRs mudaram muito entre 2022 e 2026, e um vídeo de 2021 pode ensinar texto revogado. Onde há esse risco, está escrito na linha do próprio vídeo. Em conflito, vale a norma: o vade-mécum tem o texto integral.<br><br><b>Duas falhas apareceram no caminho e foram corrigidas.</b> A primeira só existia <b>aos domingos</b>: como o domingo virou dia exclusivo de simulado, sem conteúdo prescrito, o que você estudasse por conta própria naquele dia sumia da tela — o registro continuava salvo, mas o dia não o mostrava. Agora o domingo não prescreve conteúdo e mesmo assim carrega o que você tocou. A segunda: "Acrescentar assuntos ao dia" substituía a lista inteira de extras, e num domingo isso apagava do dia um assunto em que já havia trabalho registrado. Agora o que você <i>escolhe</i> pode ser trocado à vontade; o que você <i>já fez</i>, não. O teste automático que trava esse tipo de perda foi quem pegou as duas.<br><br><b>E os pontos de restauração ficaram completos.</b> Eles guardavam questões, cartões, conteúdo lido e anotações, mas <b>não</b> guardavam a fila de revisão de conteúdo, o tempo cronometrado, o mapa de dificuldade nem os vídeos assistidos — quatro coisas que você faz de verdade. Agora vão junto.<br><br><b>Dez assuntos ficaram sem vídeo, e isso está escrito.</b> Em dois deles a ausência é deliberada: sobre a Resolução CFP 08/2025 e a 09/2024 existem vídeos, mas ensinando as resoluções <b>revogadas</b> que elas substituíram. Melhor nenhum vídeo do que um que ensina norma que não vale mais.<br><br><b>Nesta versão (2.5.0) — oito ajustes que você pediu.</b><br><br><b>1. As resoluções do CFP ficaram integrais.</b> O Código de Ética e as oito resoluções estavam no vade-mécum pela metade e sem os incisos — a Resolução 09/2024 tinha 18 unidades de 48, a 08/2020 tinha 8 de 19. Foram reconstruídas a partir das fontes oficiais arquivadas, na mesma granularidade das NRs: cada artigo, parágrafo, inciso e alínea é uma unidade própria, numerada e pesquisável, com os capítulos e seções marcados. São <b>2.599 dispositivos</b> agora, contra 2.159. Conferido caractere a caractere contra a fonte: 100% do texto normativo está lá, e o assistente passou a enxergar tudo isso.<br><br><b>2. O treino de questões passou a ser avaliado antes de ser corrigido.</b> Com a correção saindo a cada questão, a sessão terminava inteira verde e não sobrava medida nenhuma — daí a impressão de ter acertado tudo. Agora, dentro do conteúdo, <b>“Responder N questões”</b> deixa você responder todas e só então mostra a <b>avaliação</b>: quantos acertos, por dificuldade, tempo por questão contra os 3min51 da prova, e uma leitura escrita que diz que <i>tipo</i> de falha foi — errar no básico é literalidade do dispositivo, errar só no avançado é jeito da banca —, cruzando o acerto de cada tópico com <b>quanto do módulo você já leu</b>. A correção fica atrás de um botão, e a passagem de correção não regrava nada nem mexe na sua nota. Quem quiser o modo antigo tem <b>“Treinar com correção na hora”</b> ao lado.<br><br><b>3. “Já registrou hoje” estava somando ontem.</b> A janela de um dia terminava em ontem, não em hoje: por isso o painel mostrava 6h34 registradas num dia em que você ainda não tinha estudado nada. Corrigido, e as janelas de 7 e 30 dias também.<br><br><b>4. A revisão de conteúdo virou sessão guiada.</b> “Reler agora” jogava você no módulo inteiro com dezenas de blocos vencidos e nenhum fim à vista. Agora a sessão é <b>fechada</b>: um punhado de blocos por vez, dimensionado pelo tempo do seu dia, com barra de progresso, intercalando módulos diferentes. Em cada bloco você primeiro <b>tenta lembrar sem ver o texto</b>, depois confere numa versão curta — os termos que a banca troca, os números e prazos, o esqueleto do bloco — e só então diz se lembrava. Reler antes de tentar lembrar é o que fazia a revisão parecer inútil: reconhecer um texto é fácil e a prova não pede reconhecer. No fim vem a leitura do quanto você lembrava, que é o número que importa.<br><br><b>5. Os dias anteriores foram recolhidos por semana</b>, como o futuro, com o resumo da semana na barra. Só a mais recente vem aberta.<br><br><b>6. O simulado passou a ser de domingo, completo e restrito ao que você estudou.</b> Se você já usava o sistema, o calendário que estava na sua máquina foi montado com a regra antiga — mudar o gerador não muda o plano já gravado. Ao abrir esta versão, o futuro é remontado uma vez e os domingos recebem o simulado; o passado, os dias travados e tudo que já foi registrado ficam intactos, e a tela avisa quantos domingos foram marcados. Há também <b>“Simulado do domingo”</b> na tela de Simulados, para rodar na hora sem esperar o dia. Nada de “simulado por bloco”: são <b>70 questões em 4h30</b>, no padrão do concurso, <b>única atividade do domingo</b> — o plano não prescreve conteúdo nesse dia. As questões saem do que você estudou <b>até o sábado anterior</b>; se um bloco do edital ainda não foi tocado, o sistema completa a cota e diz de onde tirou. No fim vem a mesma avaliação quantitativa e qualitativa, antes da correção.<br><br><b>7. A dificuldade de cada assunto deixou de ser opinião.</b> Em Minha rotina, a cor de cada nó agora vem do <b>seu desempenho medido</b> — acerto ponderado (mais peso no recente e no avançado), retenção dos cartões e recaídas. A sua percepção continua guardada, mas só vale onde ainda não há medida, e o sistema aponta quando as duas discordam por dois níveis ou mais.<br><br><b>8. O que já foi feito hoje aparece marcado.</b> Dentro de cada módulo: quantas questões você respondeu hoje e com que acerto, e se os cartões daquele nó estão em dia ou quantos faltam.<br><br><b>Correção (2.4.3) — trocar de assunto não reinicia o Pomodoro.</b> Mudar o que você está estudando é <b>troca de tarefa dentro do mesmo bloco de foco</b>, não uma sessão nova. Antes era preciso parar e ligar de novo: o relógio voltava a zero e o ciclo do Pomodoro recomeçava — o sistema punia justamente quem intercala assuntos, que é o que a pesquisa recomenda. Agora a barra do cronômetro tem <b>“Mudar conteúdo”</b>: o tempo já corrido é lançado no assunto anterior, a contagem segue do ponto onde estava, o ciclo e a hora da pausa não se mexem, e a troca fica registrada. Dentro de cada módulo há também <b>“Contar o tempo aqui”</b>, um clique só. Os minutos que sobram abaixo de um minuto deixaram de ser descartados a cada troca — ficam guardados e entram na conta seguinte.<br><br><b>Correção (2.4.2):</b> o dia virava às 21h. O sistema pegava a data pelo relógio de Greenwich, e não pelo seu: às 21h no horário de Brasília já era o dia seguinte em Londres, então a meta zerava, as missões reiniciavam e tudo o que você estudasse das 21h à meia-noite era lançado no dia seguinte. Agora a data é montada a partir do relógio do seu aparelho, e o dia só começa à meia-noite. A contagem de dias entre datas passou a ser ancorada ao meio-dia, para não errar em virada de horário de verão.<br><br><b>Correção urgente (2.4.1):</b> na versão anterior, um assunto que você concluía era retirado do dia — inclusive do <b>dia de hoje</b>. O registro continuava salvo, mas sumia da tela, e não havia como saber disso. Agora <b>nenhum dia perde um assunto em que houve trabalho registrado nele</b>, protegido em três pontos independentes, com um teste automático que trava essa falha. A recuperação também mudou: além de “Voltar exatamente”, existe <b>“Recuperar somando”</b>, que traz de volta o que sumiu <b>sem apagar o que veio depois</b>. A lista de cópias mostra a hora, o que cada uma contém, qual é a mais completa, e avisa quanto você perderia numa substituição. O sistema também passou a guardar cópias ao longo do dia, e não só uma no começo dele.<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
+  '<br><br>Cortes conferidos no edital: eliminação com menos de 50% na Fase 1 ou na Fase 2, ou grau zero em matéria da Fase 2 (item 7.1.4.3). Habilitação até 2× vagas mais cadastro de reserva (item 7.1.2 “d”).<br><br><b>Nesta versão (2.7.0) — a prova não some mais.</b> Você fez um simulado, ele foi corrigido, e a tela de resultado morria no primeiro clique seguinte: o placar ficava no histórico, mas a avaliação e as questões, não. Uma prova de 4h30 que desaparece da tela é trabalho seu virando nada — estava errado.<br><br><b>Agora cada prova fica guardada por inteiro:</b> as 70 questões, o que você marcou em cada uma, as que você tinha marcado para rever, o tempo e o recorte por dificuldade. Em <b>Simulados → Provas que você já fez</b>, cada linha tem <b>“Ver resultado”</b>, que reabre a avaliação completa exatamente como no dia — a leitura do desempenho, a quebra por dificuldade, a tabela por tópico e as correções. Quantas vezes quiser. Nada é recontado nem regravado.<br><br><b>E o último simulado ficou exposto no painel</b>, com a nota, os cortes por fase, o tempo e os botões para reabrir e imprimir — em vez de você ter de ir procurar.<br><br><b>Imprimir a prova completa</b>, em três formatos: <b>caderno comentado</b> (o enunciado, os textos-base, todas as alternativas com a sua marcada e o gabarito destacados, o porquê de cada alternativa errada, a explicação, a pegadinha e o dispositivo citado, mais a folha de gabarito no fim com os seus erros em vermelho); <b>caderno em branco</b>, para refazer no papel daqui a um mês, com o gabarito só na última folha; e <b>só a avaliação</b>, sem as questões. Em todos, a caixa de impressão do navegador oferece "Salvar como PDF".<br><br><b>Uma ressalva honesta:</b> as provas feitas antes desta versão têm só o placar guardado — as questões daquele dia não foram gravadas e não há como reproduzi-las. O histórico marca essas com "só o placar". De hoje em diante, tudo fica.<br><br><b>Nesta versão (2.6.0) — a trilha de vídeos.</b> <b>Aviso de atualidade colado em cada vídeo.</b> Tentei descobrir a data de publicação de cada um e não é possível: a página do YouTube recusa consulta automatizada. Então o aviso não fala da idade do vídeo — fala de <b>quando a norma mudou</b>, que é o dado que decide a questão e que está conferido nas fontes oficiais guardadas aqui. Embaixo de cada vídeo de NR ou de resolução aparece uma legenda: <b>verde</b> quando o próprio título prova que ele trata do texto vigente (a NR-01 de 2026, a Portaria de 03/08/2022 da NR-4, a Resolução 31/2022), e <b>âmbar</b> quando não dá para saber — dizendo a data a partir da qual o texto mudou e o que mudou, com um botão que abre a norma no vade-mécum ali mesmo. Há filtro para ver só os que têm aviso. Nova tela <b>Vídeos</b>, com <b>101 aulas do YouTube</b> escolhidas por assunto do edital e agrupadas pelos oito blocos, com as mesmas cores que o resto do sistema usa. Cada vídeo diz de que <b>tipo</b> é — visão geral para começar do zero, aprofundamento para depois de ler o módulo, resolução de questões para depois de errar — e por que foi escolhido. Dá para filtrar por bloco, por tipo, buscar por canal ou assunto, e separar o que falta do que já foi visto. O player só nasce quando você clica: nenhum vídeo carrega sozinho, o celular não trava. Marcar como assistido conta como estudo daquele assunto e entra no registro do dia, como qualquer outra atividade.<br><br><b>Como a lista foi montada, e por que isso importa.</b> Os 101 links foram verificados <b>um a um</b> no endpoint oficial de incorporação do YouTube, que só responde quando o vídeo existe, é público e aceita ser incorporado. O título e o nome do canal que aparecem na tela são os que o próprio YouTube devolveu — não foram digitados por ninguém, e por isso não há como estarem trocados. Nenhum link entrou por lembrança: os 101 responderam, e o que não respondesse não entraria.<br><br><b>O que a verificação não garante</b> é que o conteúdo esteja atualizado — as NRs mudaram muito entre 2022 e 2026, e um vídeo de 2021 pode ensinar texto revogado. Onde há esse risco, está escrito na linha do próprio vídeo. Em conflito, vale a norma: o vade-mécum tem o texto integral.<br><br><b>Duas falhas apareceram no caminho e foram corrigidas.</b> A primeira só existia <b>aos domingos</b>: como o domingo virou dia exclusivo de simulado, sem conteúdo prescrito, o que você estudasse por conta própria naquele dia sumia da tela — o registro continuava salvo, mas o dia não o mostrava. Agora o domingo não prescreve conteúdo e mesmo assim carrega o que você tocou. A segunda: "Acrescentar assuntos ao dia" substituía a lista inteira de extras, e num domingo isso apagava do dia um assunto em que já havia trabalho registrado. Agora o que você <i>escolhe</i> pode ser trocado à vontade; o que você <i>já fez</i>, não. O teste automático que trava esse tipo de perda foi quem pegou as duas.<br><br><b>E os pontos de restauração ficaram completos.</b> Eles guardavam questões, cartões, conteúdo lido e anotações, mas <b>não</b> guardavam a fila de revisão de conteúdo, o tempo cronometrado, o mapa de dificuldade nem os vídeos assistidos — quatro coisas que você faz de verdade. Agora vão junto.<br><br><b>Dez assuntos ficaram sem vídeo, e isso está escrito.</b> Em dois deles a ausência é deliberada: sobre a Resolução CFP 08/2025 e a 09/2024 existem vídeos, mas ensinando as resoluções <b>revogadas</b> que elas substituíram. Melhor nenhum vídeo do que um que ensina norma que não vale mais.<br><br><b>Nesta versão (2.5.0) — oito ajustes que você pediu.</b><br><br><b>1. As resoluções do CFP ficaram integrais.</b> O Código de Ética e as oito resoluções estavam no vade-mécum pela metade e sem os incisos — a Resolução 09/2024 tinha 18 unidades de 48, a 08/2020 tinha 8 de 19. Foram reconstruídas a partir das fontes oficiais arquivadas, na mesma granularidade das NRs: cada artigo, parágrafo, inciso e alínea é uma unidade própria, numerada e pesquisável, com os capítulos e seções marcados. São <b>2.599 dispositivos</b> agora, contra 2.159. Conferido caractere a caractere contra a fonte: 100% do texto normativo está lá, e o assistente passou a enxergar tudo isso.<br><br><b>2. O treino de questões passou a ser avaliado antes de ser corrigido.</b> Com a correção saindo a cada questão, a sessão terminava inteira verde e não sobrava medida nenhuma — daí a impressão de ter acertado tudo. Agora, dentro do conteúdo, <b>“Responder N questões”</b> deixa você responder todas e só então mostra a <b>avaliação</b>: quantos acertos, por dificuldade, tempo por questão contra os 3min51 da prova, e uma leitura escrita que diz que <i>tipo</i> de falha foi — errar no básico é literalidade do dispositivo, errar só no avançado é jeito da banca —, cruzando o acerto de cada tópico com <b>quanto do módulo você já leu</b>. A correção fica atrás de um botão, e a passagem de correção não regrava nada nem mexe na sua nota. Quem quiser o modo antigo tem <b>“Treinar com correção na hora”</b> ao lado.<br><br><b>3. “Já registrou hoje” estava somando ontem.</b> A janela de um dia terminava em ontem, não em hoje: por isso o painel mostrava 6h34 registradas num dia em que você ainda não tinha estudado nada. Corrigido, e as janelas de 7 e 30 dias também.<br><br><b>4. A revisão de conteúdo virou sessão guiada.</b> “Reler agora” jogava você no módulo inteiro com dezenas de blocos vencidos e nenhum fim à vista. Agora a sessão é <b>fechada</b>: um punhado de blocos por vez, dimensionado pelo tempo do seu dia, com barra de progresso, intercalando módulos diferentes. Em cada bloco você primeiro <b>tenta lembrar sem ver o texto</b>, depois confere numa versão curta — os termos que a banca troca, os números e prazos, o esqueleto do bloco — e só então diz se lembrava. Reler antes de tentar lembrar é o que fazia a revisão parecer inútil: reconhecer um texto é fácil e a prova não pede reconhecer. No fim vem a leitura do quanto você lembrava, que é o número que importa.<br><br><b>5. Os dias anteriores foram recolhidos por semana</b>, como o futuro, com o resumo da semana na barra. Só a mais recente vem aberta.<br><br><b>6. O simulado passou a ser de domingo, completo e restrito ao que você estudou.</b> Se você já usava o sistema, o calendário que estava na sua máquina foi montado com a regra antiga — mudar o gerador não muda o plano já gravado. Ao abrir esta versão, o futuro é remontado uma vez e os domingos recebem o simulado; o passado, os dias travados e tudo que já foi registrado ficam intactos, e a tela avisa quantos domingos foram marcados. Há também <b>“Simulado do domingo”</b> na tela de Simulados, para rodar na hora sem esperar o dia. Nada de “simulado por bloco”: são <b>70 questões em 4h30</b>, no padrão do concurso, <b>única atividade do domingo</b> — o plano não prescreve conteúdo nesse dia. As questões saem do que você estudou <b>até o sábado anterior</b>; se um bloco do edital ainda não foi tocado, o sistema completa a cota e diz de onde tirou. No fim vem a mesma avaliação quantitativa e qualitativa, antes da correção.<br><br><b>7. A dificuldade de cada assunto deixou de ser opinião.</b> Em Minha rotina, a cor de cada nó agora vem do <b>seu desempenho medido</b> — acerto ponderado (mais peso no recente e no avançado), retenção dos cartões e recaídas. A sua percepção continua guardada, mas só vale onde ainda não há medida, e o sistema aponta quando as duas discordam por dois níveis ou mais.<br><br><b>8. O que já foi feito hoje aparece marcado.</b> Dentro de cada módulo: quantas questões você respondeu hoje e com que acerto, e se os cartões daquele nó estão em dia ou quantos faltam.<br><br><b>Correção (2.4.3) — trocar de assunto não reinicia o Pomodoro.</b> Mudar o que você está estudando é <b>troca de tarefa dentro do mesmo bloco de foco</b>, não uma sessão nova. Antes era preciso parar e ligar de novo: o relógio voltava a zero e o ciclo do Pomodoro recomeçava — o sistema punia justamente quem intercala assuntos, que é o que a pesquisa recomenda. Agora a barra do cronômetro tem <b>“Mudar conteúdo”</b>: o tempo já corrido é lançado no assunto anterior, a contagem segue do ponto onde estava, o ciclo e a hora da pausa não se mexem, e a troca fica registrada. Dentro de cada módulo há também <b>“Contar o tempo aqui”</b>, um clique só. Os minutos que sobram abaixo de um minuto deixaram de ser descartados a cada troca — ficam guardados e entram na conta seguinte.<br><br><b>Correção (2.4.2):</b> o dia virava às 21h. O sistema pegava a data pelo relógio de Greenwich, e não pelo seu: às 21h no horário de Brasília já era o dia seguinte em Londres, então a meta zerava, as missões reiniciavam e tudo o que você estudasse das 21h à meia-noite era lançado no dia seguinte. Agora a data é montada a partir do relógio do seu aparelho, e o dia só começa à meia-noite. A contagem de dias entre datas passou a ser ancorada ao meio-dia, para não errar em virada de horário de verão.<br><br><b>Correção urgente (2.4.1):</b> na versão anterior, um assunto que você concluía era retirado do dia — inclusive do <b>dia de hoje</b>. O registro continuava salvo, mas sumia da tela, e não havia como saber disso. Agora <b>nenhum dia perde um assunto em que houve trabalho registrado nele</b>, protegido em três pontos independentes, com um teste automático que trava essa falha. A recuperação também mudou: além de “Voltar exatamente”, existe <b>“Recuperar somando”</b>, que traz de volta o que sumiu <b>sem apagar o que veio depois</b>. A lista de cópias mostra a hora, o que cada uma contém, qual é a mais completa, e avisa quanto você perderia numa substituição. O sistema também passou a guardar cópias ao longo do dia, e não só uma no começo dele.<br><br><b>Nesta versão (2.4.0):</b> <b>o simulado entrou no plano.</b> O protocolo prometia um simulado por semana e o calendário não marcava nenhum — promessa em texto que o calendário não cumpre é pior do que não prometer. Agora ele é agendado no dia da semana em que você tem mais tempo, a partir da segunda semana, e vai junto na exportação para o celular. Se nenhum dia seu comporta 4h30, o sistema marca o simulado por bloco e diz por quê, em vez de marcar um completo que não cabe.<br><br><b>O cronômetro agora avisa.</b> Um som descendo ao entrar na pausa, subindo ao voltar ao foco, vibração no celular e aviso do sistema — para você não precisar olhar a tela. O som é preparado no clique em “Começar”, porque navegador não deixa tocar áudio sem um gesto seu. Dá para desligar em Minha rotina.<br><br><b>Correções de repetição no plano.</b> Assunto lido do começo ao fim não volta mais como conteúdo novo: ele voltava porque a leitura pesa só 20% no cálculo de domínio, e sem questões respondidas o nó continuava com prioridade alta, sendo trazido de volta pela remontagem semanal, já verde. Agora quem cuida do que foi lido é a fila de <b>Revisões de conteúdo</b>, e o calendário guarda distância mínima de 14 dias entre duas aparições do mesmo assunto. E o <b>“feito” passou a ser relativo ao dia</b>: num dia de revisão, só conta como feito se você revisou naquele dia — antes, um nó lido em setembro aparecia verde na revisão de novembro, como se não houvesse nada a fazer.<br><br><b>Correção (2.3.1):</b> a exportação do calendário não estava usando o caminho certo dentro do visualizador do claude.ai. O visualizador só salva uma lista fixa de tipos de arquivo, e calendário não está nela — o pedido era recusado e o erro ficava escondido. Agora o arquivo sai como <code>.ics.txt</code> ali, com a instrução de tirar o <code>.txt</code>, e continua saindo como <code>.ics</code> direto em petropsi.carlianelopes.com.br. De quebra: a exportação do mapa mental em PNG estava sendo gravada como texto e saía corrompida — agora sai como imagem de verdade.<br><br><b>Nesta versão (2.3.0) — a camada de rotina:</b> <b>Revisões de conteúdo</b>, fila própria em que cada bloco lido volta em 1, 7, 30, 60 e 90 dias — o cartão testa fato, a releitura segura a estrutura da norma. <b>Cronômetro com Pomodoro</b> preso ao nó e ao tipo de atividade, e o gráfico de onde você gastou o tempo contra onde valem os pontos, as duas medidas na mesma base. <b>Minha rotina</b>: você declara os minutos de cada dia da semana e a meta e o plano passam a caber neles. <b>Calendário</b>: exportação em .ics do plano, das revisões e das datas do certame, para o seu celular virar o despertador. E o <b>mapa de dificuldade</b> por nó, que entra na prioridade e acusa excesso de confiança.<br><br><b>2.2.0:</b> tela de Diagramas. <b>2.1.0:</b> 1.191 questões, 518 de prova real em 37 provas, nota de contexto por prova, tela de Questões anuladas, assistente cruzando provas, tom de cor por nó.</div>';
  v.appendChild(c4);
 };
 
